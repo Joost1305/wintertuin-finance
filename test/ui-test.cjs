@@ -122,13 +122,27 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await B.ctx.close();
     if (B.errors.length) { failed = true; console.log('ERRORS (laptop):', B.errors); }
 
+    // ---------------- password reset link must show the new-password screen and stay there
+    const R = await session(browser, 'org_admin', { width: 390, height: 844 });
+    await step('reset link opens "choose a new password" and stays', async () => {
+      await R.page.goto(BASE + '#access_token=abc&refresh_token=x&type=recovery');
+      await R.page.waitForSelector('#pw-form'); await R.page.waitForTimeout(1200);
+      if (!(await R.page.$('#pw-form'))) throw new Error('skipped the password screen');
+      await R.page.fill('[name=pw]', 'nieuwwachtwoord1'); await R.page.fill('[name=pw2]', 'nieuwwachtwoord1'); await R.page.click('#pw-form button[type=submit]');
+      await R.page.waitForSelector('#covers'); });
+    await step('menu has Password link that opens the form', async () => {
+      await R.page.goto(BASE + '#/password'); await R.page.waitForSelector('#pw-form');
+      const links = await R.page.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (!links.includes('#/password')) throw new Error(links.join(',')); });
+    await R.ctx.close();
+    if (R.errors.length) { failed = true; console.log('ERRORS (reset):', R.errors); }
+
     // ---------------- staff: only Today
     const C = await session(browser, 'staff', { width: 390, height: 844 });
     const s = C.page;
     await s.goto(BASE); await s.fill('[name=email]', 'a@b.c'); await s.fill('[name=password]', 'test'); await s.click('button[type=submit]'); await s.waitForSelector('#covers');
     await step('staff sees only Today in the menu', async () => {
       const links = await s.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href')));
-      if (links.join(',') !== '#/today,#/logout') throw new Error(links.join(',')); });
+      if (links.join(',') !== '#/today,#/password,#/logout') throw new Error(links.join(',')); });
     await step('staff cannot open dashboard or pick old dates', async () => {
       await s.goto(BASE + '#/dashboard'); await s.waitForSelector('#covers');
       if (await s.$('#pick-date')) throw new Error('date picker visible for staff');

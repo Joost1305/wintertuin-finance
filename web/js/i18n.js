@@ -5,7 +5,7 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 const dict = {
   en: {
     // navigation
-    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_logout: 'Sign out',
+    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_password: 'Password', nav_logout: 'Sign out',
     // login
     login_title: 'Sign in', login_sub: 'Wintertuin Finance', email: 'Email', password: 'Password', sign_in: 'Sign in',
     login_note: 'This is the finance app. Your staff app login only works here if a manager gave you access.',
@@ -105,7 +105,7 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
-    nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_logout: 'Uitloggen',
+    nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', login_sub: 'Wintertuin Finance', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen',
     login_note: 'Dit is de financiële app. Je login van de team-app werkt hier alleen als een manager je toegang heeft gegeven.',
     forgot_pw: 'Wachtwoord vergeten?', forgot_need_email: 'Vul eerst je e-mailadres in.', forgot_sent: 'Als {e} een account heeft, komt er een resetlink aan. Kijk ook in je spammap.',

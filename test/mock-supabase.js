@@ -117,6 +117,8 @@
   }
 
   const SKEY = 'mock-session';
+  // Like supabase-js: a reset link in the address signs you in and the hash gets cleared
+  if (/access_token=/.test(location.hash)) { localStorage.setItem('mock-session', '1'); setTimeout(() => { location.hash = ''; }, 50); }
   const client = {
     from: (t) => new Q(t),
     rpc: async (name, args) => (name === 'fin_report_days' ? reportDays(args) : { data: null, error: null }),

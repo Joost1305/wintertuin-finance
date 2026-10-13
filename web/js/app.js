@@ -20,6 +20,7 @@ const routes = [
   { path: 'month', render: renderMonth, nav: 'nav_month', show: perm.reports },
   { path: 'dashboard', render: renderDashboard, nav: 'nav_dashboard', show: perm.reports },
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
+  { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
 const homePath = () => 'today';
 
@@ -49,9 +50,9 @@ function renderShell() {
   top.hidden = false;
   const current = location.hash.replace(/^#\//, '').split('/')[0] || homePath();
   const nav = $('#nav');
-  nav.innerHTML = routes.filter((r) => r.show()).map((r) =>
+  nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}</a>`).join('') +
-    `<a href="#/logout">${t('nav_logout')}</a>`;
+    `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a><a href="#/logout">${t('nav_logout')}</a>`;
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));
@@ -75,14 +76,20 @@ const authLink = (() => {
   return ['invite', 'recovery'].includes(h.get('type')) ? { type: h.get('type') } : null;
 })();
 
+let choosingPassword = false; // true while the reset-link screen is open
 async function route() {
   closeModal(); // a popup never stays open on another page
+  // The auth library clears the link from the address bar, which fires a page change.
+  // Ignore it until the new password is saved, so nobody skips this screen.
+  if (choosingPassword) return;
   if (authLink && !authLink.handled) {
     authLink.handled = true;
     if (authLink.error) { location.hash = '#/login'; setTimeout(() => toastError(new Error(authLink.error)), 300); return; }
+    choosingPassword = true;
     await new Promise((r) => setTimeout(r, 400)); // let the auth library read the link
     const { data: { session } } = await sb.auth.getSession();
-    if (session) return renderSetPassword(() => { location.hash = `#/${homePath()}`; });
+    if (session) return renderSetPassword(() => { choosingPassword = false; location.hash = `#/${homePath()}`; });
+    choosingPassword = false;
     location.hash = '#/login'; return;
   }
   const [path, ...rest] = location.hash.replace(/^#\//, '').split('/');
@@ -108,7 +115,7 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 window.addEventListener('wt:lang', () => route());
-if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings)/.test(location.hash)) {
+if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings|password)/.test(location.hash)) {
   history.replaceState(null, '', `${location.pathname}${location.search}#/today`);
 }
 route();
