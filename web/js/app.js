@@ -52,7 +52,7 @@ function renderShell() {
   const nav = $('#nav');
   nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}</a>`).join('') +
-    `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a><a href="#/logout">${t('nav_logout')}</a>`;
+    `<a href="https://joost1305.github.io/wintertuin-staff-app/" target="_blank" rel="noopener">${t('nav_staff_app')} &#8599;</a><a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a><a href="#/logout">${t('nav_logout')}</a>`;
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));

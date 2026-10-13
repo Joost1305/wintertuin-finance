@@ -3,7 +3,7 @@
 const { chromium } = require('playwright');
 const fs = require('fs');
 const path = require('path');
-const BASE = 'http://localhost:8765/';
+const BASE = process.env.BASE || 'http://localhost:8765/';
 const OUT = process.argv[2] || 'test/shots';
 const MOCK = fs.readFileSync(path.join(__dirname, 'mock-supabase.js'), 'utf8');
 fs.mkdirSync(OUT, { recursive: true });
@@ -142,7 +142,7 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await s.goto(BASE); await s.fill('[name=email]', 'a@b.c'); await s.fill('[name=password]', 'test'); await s.click('button[type=submit]'); await s.waitForSelector('#covers');
     await step('staff sees only Today in the menu', async () => {
       const links = await s.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href')));
-      if (links.join(',') !== '#/today,#/password,#/logout') throw new Error(links.join(',')); });
+      if (links.filter((l) => l.startsWith('#')).join(',') !== '#/today,#/password,#/logout') throw new Error(links.join(',')); });
     await step('staff cannot open dashboard or pick old dates', async () => {
       await s.goto(BASE + '#/dashboard'); await s.waitForSelector('#covers');
       if (await s.$('#pick-date')) throw new Error('date picker visible for staff');

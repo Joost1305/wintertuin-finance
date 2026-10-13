@@ -5,7 +5,7 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 const dict = {
   en: {
     // navigation
-    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_password: 'Password', nav_logout: 'Sign out',
+    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_staff_app: 'Staff app', nav_password: 'Password', nav_logout: 'Sign out',
     // login
     login_title: 'Sign in', login_sub: 'Wintertuin Finance', email: 'Email', password: 'Password', sign_in: 'Sign in',
     login_note: 'This is the finance app. Your staff app login only works here if a manager gave you access.',
@@ -72,7 +72,7 @@ const dict = {
     set_suppliers: 'Suppliers', set_suppliers_sub: 'Shown as buttons at step 3. The default category is picked automatically.',
     set_vat: 'VAT rates', set_vat_sub: 'Rates you can choose for groups, categories and deliveries.',
     set_hours: 'Opening hours', set_closures: 'Closed days and exceptions', set_closures_sub: 'A closed day needs no entry. An extra open day (for example a themed evening) does.',
-    set_targets: 'Targets', set_targets_sub: 'Leave summer or winter empty to use the year target.', set_fixed: 'Fixed costs', set_fixed_sub: 'Used for the break-even and payback on the dashboard.',
+    set_targets: 'Targets', set_targets_sub: 'Leave summer or winter empty to use the year target.', set_fixed: 'Fixed costs', set_fixed_sub: 'Used for the break-even on the dashboard.',
     set_restaurant: 'Restaurant', set_users: 'Users', set_users_sub: 'Who can use the finance app, and with which role.', set_audit: 'Audit log', set_audit_sub: 'The last 200 changes.',
     add_person: 'Add person', team_member: 'Team', partner: 'Partner', is_partner: 'Partner (no salary, notional rate)', hourly_rate: 'Hourly rate', not_set: 'not set',
     hourly_rate_field: 'Hourly rate in euro', hourly_rate_hint: 'Total cost per hour for the business. For partners: a notional rate.',
@@ -105,7 +105,7 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
-    nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
+    nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_staff_app: 'Team-app', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', login_sub: 'Wintertuin Finance', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen',
     login_note: 'Dit is de financiële app. Je login van de team-app werkt hier alleen als een manager je toegang heeft gegeven.',
     forgot_pw: 'Wachtwoord vergeten?', forgot_need_email: 'Vul eerst je e-mailadres in.', forgot_sent: 'Als {e} een account heeft, komt er een resetlink aan. Kijk ook in je spammap.',
@@ -165,7 +165,7 @@ const dict = {
     set_suppliers: 'Leveranciers', set_suppliers_sub: 'Staan als knoppen bij stap 3. De standaardcategorie wordt automatisch gekozen.',
     set_vat: 'Btw-tarieven', set_vat_sub: 'Tarieven die je kunt kiezen voor groepen, categorieën en leveringen.',
     set_hours: 'Openingstijden', set_closures: 'Sluitingsdagen en uitzonderingen', set_closures_sub: 'Een gesloten dag hoeft niet ingevuld. Een extra open dag (bijvoorbeeld een thema-avond) wel.',
-    set_targets: 'Doelen', set_targets_sub: 'Laat zomer of winter leeg om het jaardoel te gebruiken.', set_fixed: 'Vaste kosten', set_fixed_sub: 'Gebruikt voor break-even en terugverdienen op het dashboard.',
+    set_targets: 'Doelen', set_targets_sub: 'Laat zomer of winter leeg om het jaardoel te gebruiken.', set_fixed: 'Vaste kosten', set_fixed_sub: 'Gebruikt voor de break-even op het dashboard.',
     set_restaurant: 'Restaurant', set_users: 'Gebruikers', set_users_sub: 'Wie de financiële app mag gebruiken, en met welke rol.', set_audit: 'Logboek', set_audit_sub: 'De laatste 200 wijzigingen.',
     add_person: 'Persoon toevoegen', team_member: 'Team', partner: 'Partner', is_partner: 'Partner (geen salaris, fictief tarief)', hourly_rate: 'Uurtarief', not_set: 'niet ingesteld',
     hourly_rate_field: 'Uurtarief in euro', hourly_rate_hint: 'Totale kosten per uur voor de zaak. Voor partners: een fictief tarief.',

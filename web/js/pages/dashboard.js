@@ -1,5 +1,5 @@
 // Dashboard: the Excel Dashboard and Cumulative tabs. Year to date KPIs, monthly trend,
-// targets, non-food budget, break-even and investment payback.
+// targets, non-food budget and break-even.
 // Chart rules (as in WASTE log): one measure per chart, recessive grid, tables next to charts.
 import { state, app, esc, fmt, toastError, todayIso, $, printHeader } from '../core.js';
 import { t } from '../i18n.js';
@@ -51,9 +51,8 @@ function monthsFrom(rows, invRows) {
 async function load() {
   const meta = state.meta;
   const today = todayIso();
-  const start = state.rest.investment_start || '2020-01-01';
   const [allRows, invRows] = await Promise.all([
-    reportDays(state.rest.id, start < `${year}-01-01` ? start : `${year}-01-01`, `${year}-12-31` > today ? today : `${year}-12-31`),
+    reportDays(state.rest.id, `${year}-01-01`, `${year}-12-31` > today ? today : `${year}-12-31`),
     check(await sb.from('fin_inventory_counts').select('*').eq('restaurant_id', state.rest.id)),
   ]);
   const months = monthsFrom(allRows, invRows);
@@ -77,13 +76,6 @@ async function load() {
   const thisMonth = months[`${nowY}-${pad(nowM)}`];
   const daysWithRevenue = thisMonth ? allRows.filter((r) => r.day.startsWith(`${nowY}-${pad(nowM)}`) && (Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other)) > 0).length : 0;
   const avgDay = thisMonth && daysWithRevenue ? thisMonth.k.revenue / daysWithRevenue : null;
-
-  // Payback: operating result since the start, after cost of sales, staff labor, non-food and fixed costs.
-  // Partners draw no salary, so their notional hours are left out here.
-  const all = Object.values(months).filter((m) => m.key >= start.slice(0, 7) && m.key <= today.slice(0, 7));
-  const result = all.reduce((a, m) => a + m.k.revenue - m.k.foodCogs - m.k.bevCogs - m.k.laborStaff - m.k.nonfood - (m.s.days ? fixedMonth : 0), 0);
-  const invest = Number(state.rest.investment_amount) || 0;
-  const payPct = invest ? Math.max(0, Math.min(1, result / invest)) : 0;
 
   const budget = tg('nonfood_budget');
   $('#body').innerHTML = `
@@ -131,18 +123,13 @@ async function load() {
           <tr><td>${t('variable_ratio')}</td><td>${fmt.pct(varRatio)}</td></tr>
           <tr><td>${t('avg_revenue_day')}</td><td class="${avgDay != null && be != null ? (avgDay >= be ? 'txt-green' : 'txt-red') : ''}">${avgDay == null ? '–' : fmt.money(avgDay)}</td></tr></table>
         <div class="note">${t('break_even_note')}</div></div>
-      <div class="card"><h2>${t('payback')}</h2>
-        <div class="target-nums"><span>${t('invested')} <strong>${fmt.money(invest)}</strong></span><span>${t('earned_back')} <strong class="${result < 0 ? 'txt-red' : ''}">${fmt.money(result)}</strong></span></div>
-        <div class="progress ${payPct >= 1 ? 'done' : ''}"><div style="width:${(payPct * 100).toFixed(1)}%"></div></div>
-        <div class="small muted">${fmt.pct(payPct, 0)} · ${t('payback_since', { d: fmt.date(start === '2020-01-01' ? (allRows[0] && allRows[0].day) || today : start) })}</div>
-        <div class="note">${t('payback_note')}</div></div>
-    </div>
-    <div class="card" style="margin-top:16px"><h2>${t('nonfood_budget')}</h2><div class="table-wrap"><table class="num-table">
+      <div class="card"><h2>${t('nonfood_budget')}</h2><div class="table-wrap"><table class="num-table">
       <thead><tr><th>${t('month')}</th><th>${t('actual')}</th><th>${t('budget')}</th><th>${t('pct_of_budget')}</th></tr></thead><tbody>
       ${yearMonths.map((m, i) => { const v = m ? m.k.nonfood : 0; const b = targetFor(meta, 'nonfood_budget', monthSeason(year, i + 1)); const tl = m ? traffic(v, b) : '';
         return `<tr><td>${esc(fmt.monthName(i + 1))}</td><td class="${tl ? 'txt-' + tl : ''}">${m ? fmt.money(v) : '–'}</td><td>${fmt.money(b)}</td><td>${m && b ? fmt.pct(v / b, 0) : '–'}</td></tr>`; }).join('')}
       <tr class="total"><td>${t('total')}</td><td>${fmt.money(Y.nonfood)}</td><td>${fmt.money((budget || 0) * 12)}</td><td>${budget ? fmt.pct(Y.nonfood / (budget * 12), 0) : '–'}</td></tr>
-      </tbody></table></div></div>`;
+      </tbody></table></div></div>
+    </div>`;
   drawCharts(yearMonths);
 }
 

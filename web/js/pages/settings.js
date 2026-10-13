@@ -304,15 +304,13 @@ async function restaurant(el) {
     { name: 'city', label: t('city') },
     { name: 'latitude', label: t('latitude'), type: 'number', hint: t('coords_hint') },
     { name: 'longitude', label: t('longitude'), type: 'number' },
-    { name: 'investment_amount', label: t('investment'), type: 'number' },
-    { name: 'investment_start', label: t('investment_start'), type: 'date', hint: t('investment_start_hint') },
   ];
   el.innerHTML = `<div class="card"><h2>${t('set_restaurant')}</h2><form id="rf">${formHtml(fields, r)}<button class="btn-primary" type="submit">${t('save')}</button></form></div>`;
   $('#rf', el).onsubmit = async (e) => {
     e.preventDefault();
     const v = readForm(el, fields);
     try {
-      const saved = await update('fin_restaurants', r.id, { ...v, investment_amount: v.investment_amount || 0 });
+      const saved = await update('fin_restaurants', r.id, v);
       Object.assign(state.rest, saved);
       toast(t('saved'));
     } catch (err) { toastError(err); }
