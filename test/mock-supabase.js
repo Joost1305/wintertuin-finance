@@ -133,6 +133,7 @@
       signOut: async () => { localStorage.removeItem(SKEY); return { error: null }; },
       resetPasswordForEmail: async () => ({ data: {}, error: null }),
       updateUser: async () => ({ data: {}, error: null }),
+      onAuthStateChange: () => ({ data: { subscription: { unsubscribe() {} } } }),
     },
   };
   window.supabase = { createClient: () => client };

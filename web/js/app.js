@@ -38,10 +38,19 @@ async function ensureSession() {
     await refreshMeta();
     return true;
   } catch (e) {
-    if (e.status !== 401) toastError(e);
     state.me = null;
+    if (e.message === 'no_access') { state.noAccess = true; return false; }
+    if (e.status !== 401) toastError(e);
     return false;
   }
+}
+
+function renderNoAccess() {
+  $('#topbar').hidden = true;
+  app().innerHTML = `<div class="card" style="max-width:460px;margin:10vh auto;text-align:center"><img src="img/icon.svg" width="48" height="48" alt="">
+    <h1 style="margin-top:10px">${t('no_access_title')}</h1><p class="muted">${t('no_access')}</p>
+    <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><a class="btn btn-primary" href="https://joost1305.github.io/wintertuin-staff-app/">${t('to_staff_app')}</a>
+    <a class="btn" href="#/logout">${t('nav_logout')}</a></div></div>`;
 }
 
 function renderShell() {
@@ -95,16 +104,24 @@ async function route() {
   const [path, ...rest] = location.hash.replace(/^#\//, '').split('/');
   if (path === 'logout') {
     await signOut().catch(() => {});
-    state.me = null; state.meta = null;
+    state.me = null; state.meta = null; state.noAccess = false;
     location.hash = '#/login';
     return;
   }
   if (path === 'login') {
+    // Already signed in (for example in the team app, same login): skip the form
+    const { data: { session } } = await sb.auth.getSession();
+    if (session && (await ensureSession())) { location.hash = `#/${homePath()}`; return; }
+    if (session && state.noAccess) return renderNoAccess();
     state.me = null;
     renderShell();
-    return renderLogin(async () => { if (await ensureSession()) location.hash = `#/${homePath()}`; });
+    return renderLogin(async () => {
+      if (await ensureSession()) location.hash = `#/${homePath()}`;
+      else if (state.noAccess) renderNoAccess();
+    });
   }
-  if (!(await ensureSession())) { location.hash = '#/login'; return; }
+  state.noAccess = false;
+  if (!(await ensureSession())) { if (state.noAccess) return renderNoAccess(); location.hash = '#/login'; return; }
   const r = routes.find((x) => x.path === path && x.show());
   if (!r) { location.hash = `#/${homePath()}`; return; }
   renderShell();
@@ -115,6 +132,8 @@ async function route() {
 
 window.addEventListener('hashchange', route);
 window.addEventListener('wt:lang', () => route());
+// Signed out in the other Wintertuin app (same login): follow along
+sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; } });
 if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings|password)/.test(location.hash)) {
   history.replaceState(null, '', `${location.pathname}${location.search}#/today`);
 }

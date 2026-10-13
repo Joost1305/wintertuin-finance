@@ -2,10 +2,10 @@
 // Security does not live here: Row Level Security and database functions enforce every rule.
 import { SUPABASE_URL, SUPABASE_KEY } from './config.js';
 
-// Own storage key: the staff app runs on the same domain and the same Supabase project.
-// A separate key keeps the two logins apart, so signing in here never signs you in there.
+// Default storage key on purpose: the staff app (same domain, same Supabase project) uses the same one,
+// so one login works in both apps. Access to finance still needs an active fin_app_users row.
 export const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: { persistSession: true, autoRefreshToken: true, storageKey: 'wtfin-auth' },
+  auth: { persistSession: true, autoRefreshToken: true },
 });
 
 export class ApiError extends Error {
@@ -39,7 +39,8 @@ export async function loadMe() {
   const rows = check(await sb.from('fin_app_users')
     .select('id, role, full_name, language, organization_id, restaurant_id, active')
     .eq('user_id', session.user.id).eq('active', true));
-  if (!rows.length) { await sb.auth.signOut(); throw new ApiError(403, 'no_access'); }
+  // No finance access: stay signed in (the staff app uses the same login), the app shows a no-access screen
+  if (!rows.length) throw new ApiError(403, 'no_access');
   const rank = { staff: 1, manager: 2, org_admin: 3, super_admin: 4 };
   rows.sort((a, b) => rank[b.role] - rank[a.role]);
   return { ...rows[0], user_id: session.user.id, email: session.user.email, rows };

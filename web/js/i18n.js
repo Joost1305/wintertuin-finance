@@ -5,12 +5,13 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 const dict = {
   en: {
     // navigation
-    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_staff_app: 'Staff app', nav_password: 'Password', nav_logout: 'Sign out',
+    nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_staff_app: 'Team app', nav_password: 'Password', nav_logout: 'Sign out',
     // login
     login_title: 'Sign in', login_sub: 'Wintertuin Finance', email: 'Email', password: 'Password', sign_in: 'Sign in',
-    login_note: 'This is the finance app. Your staff app login only works here if a manager gave you access.',
+    login_note: 'One login for Wintertuin Finance and the team app. Finance needs access from an admin.',
+    no_access_title: 'No access to finance', to_staff_app: 'Go to the team app',
     forgot_pw: 'Forgot your password?', forgot_need_email: 'Fill in your email address first.', forgot_sent: 'If {e} has an account, a reset link is on its way. Check your inbox and spam folder.',
-    no_access: 'This login has no access to the finance app. Ask a manager.', no_restaurant: 'No restaurant linked to your account yet.',
+    no_access: 'You are signed in, but this login has no access to the finance app. Ask an admin to add you under Settings, Users.', no_restaurant: 'No restaurant linked to your account yet.',
     pw_title: 'Choose a new password', pw_new: 'New password', pw_repeat: 'Repeat password', pw_short: 'Use at least 8 characters.', pw_mismatch: 'The two passwords are not the same.', pw_saved: 'Password saved',
     // general
     save: 'Save', saved: 'Saved', cancel: 'Cancel', delete: 'Delete', deleted: 'Deleted', edit: 'Edit', add: 'Add', close: 'Close', next: 'Next', back: 'Back',
@@ -107,9 +108,10 @@ const dict = {
   nl: {
     nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_staff_app: 'Team-app', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', login_sub: 'Wintertuin Finance', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen',
-    login_note: 'Dit is de financiële app. Je login van de team-app werkt hier alleen als een manager je toegang heeft gegeven.',
+    login_note: 'Eén login voor Wintertuin Finance en de team-app. Voor financiën heb je toegang van een admin nodig.',
+    no_access_title: 'Geen toegang tot financiën', to_staff_app: 'Naar de team-app',
     forgot_pw: 'Wachtwoord vergeten?', forgot_need_email: 'Vul eerst je e-mailadres in.', forgot_sent: 'Als {e} een account heeft, komt er een resetlink aan. Kijk ook in je spammap.',
-    no_access: 'Deze login heeft geen toegang tot de financiële app. Vraag het een manager.', no_restaurant: 'Er is nog geen restaurant aan je account gekoppeld.',
+    no_access: 'Je bent ingelogd, maar deze login heeft geen toegang tot de financiële app. Vraag een admin om je toe te voegen bij Instellingen, Gebruikers.', no_restaurant: 'Er is nog geen restaurant aan je account gekoppeld.',
     pw_title: 'Kies een nieuw wachtwoord', pw_new: 'Nieuw wachtwoord', pw_repeat: 'Herhaal wachtwoord', pw_short: 'Gebruik minstens 8 tekens.', pw_mismatch: 'De twee wachtwoorden zijn niet gelijk.', pw_saved: 'Wachtwoord opgeslagen',
     save: 'Opslaan', saved: 'Opgeslagen', cancel: 'Annuleren', delete: 'Verwijderen', deleted: 'Verwijderd', edit: 'Wijzigen', add: 'Toevoegen', close: 'Sluiten', next: 'Volgende', back: 'Terug',
     none: '(geen)', error: 'Er ging iets mis', no_data: 'Nog geen gegevens.', nothing_yet: 'Hier staat nog niets.', print: 'Printen', printed: 'Geprint',

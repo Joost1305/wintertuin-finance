@@ -42,8 +42,9 @@ The finance app never touches the staff app tables.
   extra API settings are needed in Supabase.
 - **Own access:** a login only works here with an active row in `fin_app_users`. A staff app
   user does not get finance access automatically.
-- **Own session:** the browser stores the finance login under its own key (`wtfin-auth`),
-  so signing in to one app does not sign you in to the other, even on the same domain.
+- **One login:** both apps use the default Supabase session key on the same domain, so signing in to
+  one signs you in to the other, and signing out of one signs you out of both. A signed-in user without
+  finance access sees a "no access" screen with a link to the team app (they stay signed in).
 - **Known side effect:** the staff app has a trigger (`on_auth_user_created`) that gives every
   new login a staff profile. A finance-only user created here can therefore also sign in to
   the staff app as staff. Left as is on purpose (no changes to the staff app). To close it, the
