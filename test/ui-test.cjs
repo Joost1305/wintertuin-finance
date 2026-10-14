@@ -172,6 +172,14 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await step('settings: staff rate saved', async () => {
       await q.goto(BASE + '#/settings/staff'); await q.waitForSelector('[data-edit]'); await q.click('[data-edit] >> nth=1');
       await q.fill('.modal [name=hourly_rate]', '25'); await q.click('.modal button[type=submit]'); await q.waitForSelector('text=€25.00'); });
+    await step('settings: targets show one column, seasons on request', async () => {
+      await q.goto(BASE + '#/settings/targets'); await q.waitForSelector('#tgt');
+      if (await q.isVisible('#tgt th.sea')) throw new Error('summer/winter shown while empty');
+      await q.click('#tgt-seasons'); await q.waitForSelector('#tgt th.sea', { state: 'visible' });
+      await q.fill('[data-m=labor][data-s=winter]', '35'); await q.click('#save-t'); await q.waitForTimeout(800);
+      await q.waitForSelector('#tgt.show-seasons'); if ((await q.inputValue('[data-m=labor][data-s=winter]')) !== '35') throw new Error('winter not saved');
+      await q.click('#tgt-seasons'); await q.click('#save-t'); await q.waitForTimeout(800);
+      await q.waitForSelector('#tgt:not(.show-seasons)'); if (await q.isVisible('#tgt th.sea')) throw new Error('seasons not cleared'); });
     await step('settings: add user shows password once', async () => {
       await q.goto(BASE + '#/settings/users'); await q.waitForSelector('#add'); await q.click('#add');
       await q.fill('.modal [name=email]', 'new@example.test'); await q.fill('.modal [name=full_name]', 'New Person'); await q.click('.modal button[type=submit]');

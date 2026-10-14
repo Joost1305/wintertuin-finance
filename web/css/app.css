@@ -487,3 +487,8 @@ tr.sc-current td { background: var(--primary-soft); }
   table.num-table th, table.num-table th:not(:first-child) { white-space: normal; }
   table.num-table th, table.num-table td { padding-left: 6px; padding-right: 6px; }
 }
+/* targets: summer and winter columns only when wanted */
+#tgt .sea { display: none; }
+#tgt.show-seasons .sea { display: table-cell; }
+.sea-sub { display: none; }
+#tgt.show-seasons ~ .sea-sub, .table-wrap:has(#tgt.show-seasons) + .sea-sub { display: block; }

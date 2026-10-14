@@ -373,14 +373,26 @@ async function targets(el) {
   const val = (m, s) => { const x = list_.find((r) => r.metric === m && r.season === s); return x ? Number(x.value) : null; };
   const show = (m, v) => (v == null ? '' : m === 'nonfood_budget' ? String(v) : String(round2(v * 100)));
   const can = perm.admin();
-  el.innerHTML = `<div class="card"><h2>${t('set_targets')}</h2><p class="small muted" style="margin-top:-6px">${t('set_targets_sub')}</p>
-    <div class="table-wrap"><table><thead><tr><th>${t('metric')}</th>${seasons.map((s) => `<th>${t('season_' + s)}</th>`).join('')}</tr></thead><tbody>
+  // Summer and winter columns stay hidden until someone wants them, or a seasonal value already exists
+  const hasSeasonal = metrics.some((m) => val(m, 'summer') != null || val(m, 'winter') != null);
+  el.innerHTML = `<div class="card"><h2>${t('set_targets')}</h2>
+    <div class="table-wrap"><table id="tgt" class="${hasSeasonal ? 'show-seasons' : ''}"><thead><tr><th>${t('metric')}</th>${seasons.map((s) => `<th class="${s === 'all' ? '' : 'sea'}">${t('season_' + s)}</th>`).join('')}</tr></thead><tbody>
     ${metrics.map((m) => `<tr><td><strong>${t('target_' + m)}</strong><div class="tiny muted">${m === 'nonfood_budget' ? t('per_month_eur') : t('pct_of_revenue')}</div></td>
-      ${seasons.map((s) => `<td><input data-m="${m}" data-s="${s}" inputmode="decimal" value="${show(m, val(m, s))}" ${can ? '' : 'disabled'}
+      ${seasons.map((s) => `<td class="${s === 'all' ? '' : 'sea'}"><input data-m="${m}" data-s="${s}" inputmode="decimal" value="${show(m, val(m, s))}" ${can ? '' : 'disabled'}
         placeholder="${s === 'all' ? '' : t('same_as_year')}" style="max-width:120px"></td>`).join('')}</tr>`).join('')}
     </tbody></table></div>
-    ${can ? `<button type="button" class="btn-primary" id="save-t" style="margin-top:12px">${t('save')}</button>` : `<div class="note">${t('admin_only')}</div>`}
+    <p class="small muted sea-sub" style="margin:8px 0 0">${t('set_targets_sub')}</p>
+    ${can ? `<button type="button" class="btn-ghost btn-sm" id="tgt-seasons" style="margin-top:8px;padding-left:0">${t(hasSeasonal ? 'tgt_seasons_off' : 'tgt_seasons_on')}</button>` : ''}
+    <div>${can ? `<button type="button" class="btn-primary" id="save-t" style="margin-top:12px">${t('save')}</button>` : `<div class="note">${t('admin_only')}</div>`}</div>
     <div class="note">${t('traffic_note')}</div></div>`;
+  const tog = $('#tgt-seasons', el);
+  if (tog) tog.onclick = () => {
+    const tbl = $('#tgt', el); const on = !tbl.classList.contains('show-seasons');
+    // switching back to one target clears the seasonal fields, so Save removes them
+    if (!on) $$('td.sea input', el).forEach((i) => { i.value = ''; });
+    tbl.classList.toggle('show-seasons', on);
+    tog.textContent = t(on ? 'tgt_seasons_off' : 'tgt_seasons_on');
+  };
   const btn = $('#save-t', el);
   if (btn) btn.onclick = async () => {
     try {
