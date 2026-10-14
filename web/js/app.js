@@ -1,5 +1,5 @@
 // App shell and router (hash based, no build step). Same structure as WASTE log.
-import { state, perm, $, esc, app, toastError, renderLangToggle, savedRestId, saveRestId, refreshMeta, closeModal } from './core.js';
+import { state, perm, $, esc, app, toastError, renderLangToggle, savedRestId, saveRestId, refreshMeta, closeModal , employeeView, renderEmployeeBanner } from './core.js';
 import { t, setLang } from './i18n.js';
 import { sb, loadMe, loadRestaurants, signOut } from './data.js';
 import { BUILD } from './config.js';
@@ -56,7 +56,7 @@ function renderNoAccess() {
 
 function renderShell() {
   const top = $('#topbar');
-  if (!state.me) { top.hidden = true; return; }
+  if (!state.me) { top.hidden = true; renderEmployeeBanner(false); return; }
   top.hidden = false;
   const current = location.hash.replace(/^#\//, '').split('/')[0] || homePath();
   const nav = $('#nav');
@@ -66,6 +66,7 @@ function renderShell() {
     (perm.settings() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
     `<a href="#/logout">${t('nav_logout')}</a>`;
   $('#app-switch-label').textContent = t('nav_staff_app');
+  renderEmployeeBanner(perm.realManager(), '#/settings', t);
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));
@@ -107,6 +108,7 @@ async function route() {
   }
   const [path, ...rest] = location.hash.replace(/^#\//, '').split('/');
   if (path === 'logout') {
+    employeeView.set(false);
     await signOut().catch(() => {});
     state.me = null; state.meta = null; state.noAccess = false;
     location.hash = '#/login';

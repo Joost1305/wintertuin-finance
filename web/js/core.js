@@ -17,12 +17,37 @@ export async function refreshMeta() {
   state.meta = await loadMeta(state.rest.id, state.rank);
 }
 
+// In employee view a manager gets the screens of staff (rank 1); data access itself is unchanged
+const viewRank = () => (state.rank >= 2 && employeeView.on() ? 1 : state.rank);
 export const perm = {
-  reports: () => state.rank >= 2,
-  settings: () => state.rank >= 2,
-  admin: () => state.rank >= 3,
-  super: () => state.rank >= 4,
+  reports: () => viewRank() >= 2,
+  settings: () => viewRank() >= 2,
+  admin: () => viewRank() >= 3,
+  super: () => viewRank() >= 4,
+  realManager: () => state.rank >= 2,
 };
+// ------------------------------------------------------------------ employee view
+// A manager can look at the app exactly as staff see it. Only the screens change; on this device only.
+const EMP_KEY = 'wtFinanceEmployeeView';
+export const employeeView = {
+  on() { try { return localStorage.getItem(EMP_KEY) === '1'; } catch { return false; } },
+  set(v) { try { if (v) localStorage.setItem(EMP_KEY, '1'); else localStorage.removeItem(EMP_KEY); } catch { /* private mode */ } },
+};
+
+// Banner while a manager looks at the employee view
+export function renderEmployeeBanner(isRealManager, backHash, t) {
+  let bar = document.getElementById('emp-bar');
+  const show = isRealManager && employeeView.on();
+  if (!show) { if (bar) bar.remove(); document.body.classList.remove('emp-view'); return; }
+  if (!bar) { bar = document.createElement('div'); bar.id = 'emp-bar'; bar.className = 'emp-bar'; document.querySelector('main').before(bar); }
+  document.body.classList.add('emp-view');
+  bar.innerHTML = `<span>&#128065; ${t('emp_view_on')}</span><button type="button" class="btn-sm" id="emp-off">${t('emp_view_off')}</button>`;
+  bar.querySelector('#emp-off').onclick = () => {
+    employeeView.set(false);
+    if (location.hash === backHash) window.dispatchEvent(new Event('wt:lang')); else location.hash = backHash;
+  };
+}
+
 
 // ------------------------------------------------------------------ formatting
 const locale = () => (lang() === 'en' ? 'en-GB' : 'nl-NL');

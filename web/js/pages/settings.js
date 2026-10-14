@@ -1,7 +1,7 @@
 // Settings: staff and rates, revenue streams, purchase categories, suppliers, VAT, opening hours,
 // closed days, targets, fixed costs, restaurant, users and audit log.
 // Managers manage the daily lists; org admins also targets, fixed costs, restaurant and users.
-import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, nameOf, openModal, confirmDialog, formHtml, readForm, round2, refreshMeta } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, nameOf, openModal, confirmDialog, formHtml, readForm, round2, refreshMeta, employeeView } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, list, insert, update, remove, adminUsers, setPassword } from '../data.js';
 import { seasonOf } from '../calc.js';
@@ -29,11 +29,13 @@ export async function renderSettings(args = []) {
   const wanted = args[0];
   const narrow = window.matchMedia('(max-width: 820px)').matches;
   const current = sections.find((x) => x.id === wanted) || (narrow ? null : sections[0]);
-  app().innerHTML = `<div class="page-head"><h1>${t('nav_settings')}</h1></div>
+  app().innerHTML = `<div class="page-head"><h1>${t('nav_settings')}</h1>
+      <div class="page-actions"><button type="button" class="btn-sm" id="emp-on" title="${t('emp_view_hint')}">&#128065; ${t('emp_view')}</button></div></div>
     <div class="settings ${current ? 'has-section' : 'menu-only'}">
       <nav class="settings-nav">${sections.map((x) => `<a href="#/settings/${x.id}" class="${current && x.id === current.id ? 'active' : ''}">${t(x.label)}</a>`).join('')}</nav>
       <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
+  $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/today'; };
   if (!current) return;
   const fn = { vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
   try { await fn($('#sec')); } catch (e) { toastError(e); }

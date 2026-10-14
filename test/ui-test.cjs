@@ -155,6 +155,16 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.goto(BASE + '#/settings/users'); await q.waitForSelector('#add'); await q.click('#add');
       await q.fill('.modal [name=email]', 'new@example.test'); await q.fill('.modal [name=full_name]', 'New Person'); await q.click('.modal button[type=submit]');
       await q.waitForSelector('.pw-card code'); await q.screenshot({ path: `${OUT}/11-user.png` }); });
+    await step('employee view: manager sees the staff screens, then goes back', async () => {
+      await q.goto(BASE + '#/settings'); await q.waitForSelector('#emp-on'); await q.click('#emp-on');
+      await q.waitForSelector('#emp-bar'); await q.waitForTimeout(300);
+      const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href')));
+      if (links.includes('#/settings')) throw new Error('settings still in menu');
+      if (!links.includes('#/password')) throw new Error('no staff password link');
+      if (links.includes('#/dashboard')) throw new Error('dashboard visible'); if (await q.$('#pick-date')) throw new Error('date picker visible');
+      await q.screenshot({ path: `${OUT}/14-employee-view.png`, fullPage: true });
+      await q.click('#emp-off'); await q.waitForSelector('#emp-on');
+      if (await q.$('#emp-bar')) throw new Error('banner stayed'); });
     await step('switch to Dutch', async () => {
       await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#lang-toggle [data-lang=nl]'); await q.click('#lang-toggle [data-lang=nl]');
       await q.waitForSelector('text=Instellingen'); await q.waitForSelector('#c-rev'); await q.screenshot({ path: `${OUT}/12-dashboard-nl.png` }); });

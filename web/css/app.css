@@ -440,3 +440,8 @@ table.num-table td:first-child { white-space: nowrap; }
 .del-day { text-align: center; margin-top: 18px; }
 @media (max-width: 560px) { .sup-line { grid-template-columns: 1fr; gap: 2px; } }
 .sup-links a { text-decoration: none; font-weight: 600; } .sup-links a.btn-primary { color: var(--primary-ink); display: inline-flex; align-items: center; gap: 4px; }
+
+/* employee view banner */
+.emp-bar { position: sticky; top: 0; z-index: 30; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap;
+  padding: 8px 16px; background: var(--accent-soft, #F6E7DC); color: var(--ink); font-weight: 600; font-size: .9rem; border-bottom: 1px solid var(--line); }
+@media print { .emp-bar { display: none !important; } }
