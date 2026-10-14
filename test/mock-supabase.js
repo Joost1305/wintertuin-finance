@@ -44,6 +44,14 @@
     db.fin_purchases.push({ id: uid(), organization_id: ORG, restaurant_id: REST, day_id: day.id, category_id: db.fin_purchase_categories[0].id, supplier_id: db.fin_suppliers[0].id, amount_ex: 280, vat_rate: 0.09 });
     db.fin_hours.push({ id: uid(), organization_id: ORG, restaurant_id: REST, day_id: day.id, staff_id: db.fin_staff[4].id, hours: 8 });
   }
+
+  // a stored morning check with one gap and one change, like the real system_checks table
+  const scRow = (status, minutesAgo) => ({ id: Math.floor(Math.random() * 1e9), run_at: new Date(Date.now() - minutesAgo * 6e4).toISOString(), trigger: 'schedule', status,
+    checks: [{ key: 'database', status: 'ok', detail: 'reachable', ms: 40 }, { key: 'team_app', status: 'ok', detail: 'online, newest version' }, { key: 'weather', status: status === 'fail' ? 'fail' : 'ok', detail: status === 'fail' ? 'HTTP 500' : 'weather service answers' }],
+    gaps: [{ key: 'missing_days', count: 1, items: [new Date(Date.now() - 864e5).toLocaleDateString('sv-SE')] }],
+    changes: [{ at: new Date().toISOString(), user: 'Joost', app: 'team', entity: 'events', action: 'create', name: 'Wedding Jansen' }],
+    window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() });
+  db.system_checks = [scRow('warn', 120), scRow('fail', 60 * 24)];
   window.__mockdb = db;
 
   function triggers(table, row, old) {
@@ -125,6 +133,11 @@
     from: (t) => new Q(t),
     rpc: async (name, args) => {
       if (name === 'fin_report_days') return reportDays(args);
+      if (name === 'fin_events_overview') { const today = new Date().toLocaleDateString('sv-SE'); const later = new Date(Date.now() + 9 * 864e5).toLocaleDateString('sv-SE');
+        const all = [{ id: 'ev1', title: 'Wedding Jansen', event_date: today, start_time: '17:00:00', status: 'confirmed', guests: 72, expected_revenue: role === 'staff' ? null : 6120, prices_incl_vat: true, deposit: null, deposit_due: null, deposit_paid: null },
+                     { id: 'ev2', title: 'Company dinner', event_date: later, start_time: '19:00:00', status: 'option', guests: 30, expected_revenue: 1950, prices_incl_vat: false, deposit: 500, deposit_due: today, deposit_paid: false }];
+        return { data: all.filter((e) => e.event_date >= args.p_from && e.event_date <= args.p_to && (role !== 'staff' || e.status !== 'option')), error: null }; }
+      if (name === 'fin_open_deposits') return { data: [{ id: 'ev2', title: 'Company dinner', event_date: new Date(Date.now() + 9 * 864e5).toLocaleDateString('sv-SE'), deposit: 500, deposit_due: new Date(Date.now() - 864e5).toLocaleDateString('sv-SE') }], error: null };
       if (name === 'fin_set_day_open') { const ex = db.fin_closures.find((c) => c.day === args.p_day);
         if (ex) Object.assign(ex, { is_open: args.p_open, note: args.p_note }); else db.fin_closures.push({ id: uid(), organization_id: ORG, restaurant_id: REST, day: args.p_day, is_open: args.p_open, note: args.p_note });
         return { data: null, error: null }; }
@@ -142,6 +155,7 @@
       return { data: null, error: null };
     },
     functions: { invoke: async (name, { body }) => {
+      if (name === 'system-check') { const r = { id: Math.floor(Math.random() * 1e9), run_at: new Date().toISOString(), trigger: 'manual', status: 'ok', checks: [{ key: 'database', status: 'ok', detail: 'reachable' }], gaps: [], changes: [], window_from: new Date(Date.now() - 864e5).toISOString(), window_to: new Date().toISOString() }; db.system_checks.unshift(r); return { data: { ok: true, data: r }, error: null }; }
       if (body.action === 'list') return { data: { users: db.fin_app_users.map((u) => ({ ...u, email: u.full_name.toLowerCase() + '@example.test', last_sign_in_at: null })) }, error: null };
       if (body.action === 'create') { db.fin_app_users.push({ id: uid(), user_id: uid(), organization_id: ORG, role: body.role, full_name: body.full_name, language: body.language, active: true }); return { data: { ok: true, email: body.email, password: 'Abc123xyz9' }, error: null }; }
       return { data: { ok: true, password: 'Abc123xyz9' }, error: null };

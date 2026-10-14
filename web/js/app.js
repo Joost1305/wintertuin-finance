@@ -12,6 +12,8 @@ import { renderDashboard } from './pages/dashboard.js';
 import { renderSettings } from './pages/settings.js';
 
 console.log(`Wintertuin Finance, build ${BUILD}`);
+// One tab per app: the switch button in the other app targets this name and reuses this tab
+try { window.name = 'wintertuin-finance'; } catch { /* ignore */ }
 
 const RANK = { staff: 1, manager: 2, org_admin: 3, super_admin: 4 };
 const routes = [

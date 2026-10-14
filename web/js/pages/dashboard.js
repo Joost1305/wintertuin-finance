@@ -94,6 +94,7 @@ async function load() {
       ${tile(t('ytd_avg_spend'), fmt.money2(Y.avgSpend), '', null)}
     </div>
     <div class="note">${t('labor_excl_partners_note', { l: fmt.pct(Y.laborPctStaff), p: fmt.pct(Y.primePctStaff) })}</div>
+    <div class="card" style="margin-top:16px" id="events-card"><h2>${t('events_ahead')}</h2><div class="empty"><span class="spinner"></span></div></div>
     <div class="card" style="margin-top:16px" id="planned-labor"><h2>${t('planned_labor')}</h2><div class="empty"><span class="spinner"></span></div></div>
     <div class="grid grid-2" style="margin-top:16px">
       <div class="card"><h2>${t('revenue_per_month')}</h2><div class="chart-box"><canvas id="c-rev"></canvas></div></div>
@@ -138,6 +139,40 @@ async function load() {
   drawCharts(yearMonths);
   lastYear = { year, yearMonths, Y };
   plannedLabor(allRows);
+  eventsAhead();
+}
+
+// Events from the team app: the next 60 days, expected revenue and deposits still to come in
+const TEAM_EVENT = (id) => `https://joost1305.github.io/wintertuin-staff-app/#/events/${id}`;
+async function eventsAhead() {
+  const box = document.getElementById('events-card');
+  if (!box) return;
+  const today = todayIso();
+  try {
+    const [evs, deps] = await Promise.all([
+      sb.rpc('fin_events_overview', { p_rest: state.rest.id, p_from: today, p_to: addDaysIso(today, 60) }).then(check),
+      sb.rpc('fin_open_deposits', { p_rest: state.rest.id }).then(check),
+    ]);
+    const rows = evs || []; const open = deps || [];
+    // Prices on a BEO can include VAT; for the excl. VAT total we take 9% (food). An estimate, said so on screen.
+    const ex = (e) => (e.expected_revenue == null ? 0 : e.prices_incl_vat ? Number(e.expected_revenue) / 1.09 : Number(e.expected_revenue));
+    const conf = rows.filter((e) => e.status === 'confirmed'); const opt = rows.filter((e) => e.status === 'option');
+    const sum = (a) => a.reduce((x, e) => x + ex(e), 0);
+    const link = (e) => `<a href="${TEAM_EVENT(e.id)}" target="wintertuin-team">${esc(e.title)}</a>`;
+    box.innerHTML = `<h2>${t('events_ahead')}</h2>
+      <div class="grid grid-kpi" style="margin-bottom:12px">
+        <div class="kpi"><div class="label">${t('events_confirmed')}</div><div class="value">${conf.length}</div><div class="tiny muted">${fmt.money(sum(conf))} ${t('excl_vat_est')}</div></div>
+        <div class="kpi"><div class="label">${t('events_options')}</div><div class="value">${opt.length}</div><div class="tiny muted">${fmt.money(sum(opt))} ${t('excl_vat_est')}</div></div>
+        <div class="kpi"><div class="label">${t('deposits_open')}</div><div class="value ${open.some((d) => d.deposit_due && d.deposit_due < today) ? 'txt-red' : ''}">${fmt.money(open.reduce((a, d) => a + Number(d.deposit), 0))}</div><div class="tiny muted">${t('deposits_n', { n: open.length })}</div></div>
+      </div>
+      ${rows.length ? `<div class="table-wrap"><table class="num-table ev-tbl"><thead><tr><th>${t('date')}</th><th>${t('event')}</th><th>${t('status')}</th><th>${t('guests')}</th><th>${t('expected')}</th></tr></thead><tbody>
+        ${rows.map((e) => `<tr><td>${esc(fmt.dayShort(e.event_date))}</td><td>${link(e)}</td><td><span class="badge ${e.status === 'confirmed' ? 'green' : 'amber'}">${t('evs_' + e.status)}</span></td>
+          <td>${e.guests ?? '–'}</td><td>${e.expected_revenue != null ? `${fmt.money(e.expected_revenue)} <span class="tiny muted">${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}</span>` : '–'}</td></tr>`).join('')}</tbody></table></div>`
+        : `<div class="empty small">${t('events_none')}</div>`}
+      ${open.length ? `<h3 style="margin:16px 0 6px;font-size:.95rem">${t('deposits_open')}</h3><table class="kv">${open.map((d) => `<tr><td>${link(d)} <span class="tiny muted">${esc(fmt.dayShort(d.event_date))}</span></td>
+        <td class="${d.deposit_due && d.deposit_due < today ? 'txt-red' : ''}">${fmt.money2(d.deposit)}${d.deposit_due ? ` · ${t(d.deposit_due < today ? 'deposit_overdue' : 'deposit_due_on', { d: fmt.dayShort(d.deposit_due) })}` : ''}</td></tr>`).join('')}</table>` : ''}
+      <div class="tiny muted" style="margin-top:8px">${t('events_vat_note')}</div>`;
+  } catch (e) { box.innerHTML = `<h2>${t('events_ahead')}</h2><div class="empty small">${t('events_unavailable')}</div>`; console.warn(e); }
 }
 
 function drawCharts(yearMonths) {

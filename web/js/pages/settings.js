@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { sb, check, list, insert, update, remove, adminUsers, setPassword } from '../data.js';
 import { seasonOf } from '../calc.js';
 import { renderVat } from './vat.js';
+import { renderSystemCheck } from './system-check.js';
 
 const SECTIONS = [
   { id: 'staff', label: 'set_staff', show: perm.settings },
@@ -20,6 +21,7 @@ const SECTIONS = [
   { id: 'restaurant', label: 'set_restaurant', show: perm.admin },
   { id: 'users', label: 'set_users', show: perm.admin },
   { id: 'audit', label: 'set_audit', show: perm.admin },
+  { id: 'system', label: 'set_system', show: perm.settings },
   { id: 'password', label: 'set_password', show: perm.settings },
 ];
 
@@ -36,7 +38,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/today'; };
   if (!current) return;
-  const fn = { vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
+  const fn = { system: (el) => renderSystemCheck(el), vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
   try { await fn($('#sec')); } catch (e) { toastError(e); }
 }
 
@@ -90,7 +92,7 @@ async function staff(el) {
   const m = state.meta;
   const rateOf = (id) => { const today = todayIso(); const r = (m.rates || []).filter((x) => x.staff_id === id && x.valid_from <= today).pop(); return r ? Number(r.hourly_rate) : null; };
   // Team app accounts (same login system), to link people so their roster and clock-in hours flow into the daily closing
-  const profiles = check(await sb.from('profiles').select('id, full_name, email, active').order('full_name')) || [];
+  const profiles = (check(await sb.from('profiles').select('id, full_name, email, active').order('full_name')) || []).filter((p) => p.email !== 'system-check@wintertuin.app');
   const profileName = (uid) => { const p = profiles.find((x) => x.id === uid); return p ? p.full_name : ''; };
   crud(el, {
     title: t('set_staff'), sub: t('set_staff_sub'), table: 'fin_staff', addLabel: t('add_person'),

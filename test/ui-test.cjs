@@ -131,13 +131,17 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       if (!(await q.$('text=planned hours belong to people'))) throw new Error('no unlinked note');
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error(dl.suggestedFilename());
       await q.screenshot({ path: `${OUT}/09-dashboard.png`, fullPage: true }); });
+    await step('dashboard: events ahead with expected revenue and overdue deposit', async () => {
+      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#events-card table');
+      const txt = await q.textContent('#events-card'); if (!/Wedding Jansen/.test(txt) || !/Company dinner/.test(txt) || !/was due/.test(txt)) throw new Error(txt);
+      if (!(await q.$('#events-card a[target=wintertuin-team]'))) throw new Error('no link to team app'); });
     await step('settings: import team app accounts', async () => {
       await q.goto(BASE + '#/settings/staff'); await q.waitForSelector('#import-team'); await q.click('#import-team'); await q.click('#cf-ok'); await q.waitForTimeout(500);
       const lisa = await q.evaluate(() => window.__mockdb.fin_staff.find((s) => s.user_id === 'p-lisa')); if (!lisa) throw new Error('not imported'); });
     await step('top bar: app switch next to the brand, no Password for managers', async () => {
       if (!(await q.isVisible('#app-switch'))) throw new Error('no switch');
       const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (links.includes('#/password')) throw new Error('password in menu'); });
-    for (const sec of ['vatreport', 'staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
+    for (const sec of ['vatreport', 'staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'system', 'password']) {
       await step(`settings: ${sec}`, async () => { await q.goto(BASE + '#/settings/' + sec); await q.waitForSelector('#sec .card'); });
     }
     await step('settings: add supplier via modal', async () => {
@@ -182,6 +186,11 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.screenshot({ path: `${OUT}/14-employee-view.png`, fullPage: true });
       await q.click('#emp-off'); await q.waitForSelector('#emp-on');
       if (await q.$('#emp-bar')) throw new Error('banner stayed'); });
+    await step('settings: system check shows checks, gaps, changes; run now adds a green check', async () => {
+      await q.goto(BASE + '#/settings/system'); await q.waitForSelector('.sc-list');
+      const txt = await q.textContent('#sec'); if (!/Works, but worth a look/.test(txt) || !/Daily closing missing/.test(txt) || !/Wedding Jansen/.test(txt)) throw new Error(txt.slice(0, 300));
+      await q.screenshot({ path: `${OUT}/19-system-check.png`, fullPage: true });
+      await q.click('#sc-run'); await q.waitForSelector('text=Everything works'); });
     await step('switch to Dutch', async () => {
       await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#lang-toggle [data-lang=nl]'); await q.click('#lang-toggle [data-lang=nl]');
       await q.waitForSelector('text=Instellingen'); await q.waitForSelector('#c-rev'); await q.screenshot({ path: `${OUT}/12-dashboard-nl.png` }); });
@@ -213,6 +222,9 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       if (await s.$('#pick-date')) throw new Error('date picker visible for staff');
       await s.goto(BASE + '#/today/2020-01-01'); await s.waitForSelector('#covers');
       const sub = await s.textContent('.page-head .muted'); if (/2020/.test(sub)) throw new Error('old date opened'); });
+    await step('staff sees the event of today without money', async () => {
+      await s.goto(BASE + '#/today'); await s.waitForSelector('.event-today');
+      const txt = await s.textContent('.event-today'); if (!/Wedding Jansen/.test(txt) || /€/.test(txt)) throw new Error(txt); });
     await step('staff has no Delete this day button', async () => {
       await s.fill('#covers', '12'); await s.waitForTimeout(900); await s.click('[data-step="4"]'); await s.waitForSelector('.sum-grid');
       if (await s.$('#del-day')) throw new Error('delete visible for staff'); });

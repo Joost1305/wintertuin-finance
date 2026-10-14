@@ -19,10 +19,14 @@ export async function renderToday(args = []) {
   if (!perm.reports() && (date > today || date < addDaysIso(today, -1))) date = today;
   app().className = 'app narrow';
   app().innerHTML = `<div class="card empty"><span class="spinner"></span></div>`;
-  const data = await getDay(state.rest.id, date);
+  const [data, events] = await Promise.all([
+    getDay(state.rest.id, date),
+    // Events from the team app on this day (managers also get the agreed amount)
+    sb.rpc('fin_events_overview', { p_rest: state.rest.id, p_from: date, p_to: date }).then(({ data: d, error }) => (error ? [] : d || [])).catch(() => []),
+  ]);
   const d = data.day;
   s = {
-    date, today,
+    date, today, events,
     day: d,
     covers: d ? d.covers : null,
     expected: d ? d.expected_covers : null,
@@ -103,7 +107,10 @@ function draw() {
       <button type="button" class="chip ${s.date === yesterday ? 'on' : ''}" data-date="${yesterday}">${t('yesterday')}</button>
       ${perm.reports() ? `<input type="date" id="pick-date" value="${s.date}" max="${s.today}" style="width:auto">` : ''}
     </div>
-    ${closed ? `<div class="note" style="margin:-4px 0 14px">${t('closed_day_note')}${note ? ` (${esc(note)})` : ''}</div>` : ''}
+    ${s.events.length ? s.events.map((e) => `<div class="event-today">&#127881; <div><strong>${t(isToday ? 'event_today' : 'event_on_day')}: ${esc(e.title)}</strong>
+      <div class="small">${e.start_time ? `${esc(String(e.start_time).slice(0, 5))} · ` : ''}${e.guests ? `${e.guests} ${t('guests')}` : ''}${e.expected_revenue != null ? ` · ${t('event_agreed')} ${fmt.money(e.expected_revenue)} ${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}` : ''}</div>
+      <div class="tiny muted">${t('event_today_hint')}</div></div></div>`).join('')
+    : closed ? `<div class="note" style="margin:-4px 0 14px">${t('closed_day_note')}${note ? ` (${esc(note)})` : ''}</div>` : ''}
     <div class="path-bar">${STEPS.map((k, i) => `<button type="button" class="path-seg ${i === s.step ? 'current' : stepDone(i) ? 'done' : ''}" data-step="${i}">
       <span>${i + 1}. ${t('step_' + k)}</span></button>`).join('')}</div>
     <div class="path-label">${t('step_of', { n: s.step + 1, k: t('step_' + STEPS[s.step]) })}</div>
