@@ -99,6 +99,13 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       const miss = await q.$$eval('.cal-day.missing[data-day]', (b) => b.map((x) => new Date(x.dataset.day + 'T12:00:00').getDay()));
       if (miss.some((wd) => wd !== 5 && wd !== 6)) throw new Error('missing on a day nobody worked: ' + miss);
       await q.screenshot({ path: `${OUT}/07-calendar.png`, fullPage: true }); });
+    await step('calendar: add and remove a day note', async () => {
+      const b = await q.$('[data-note]'); const d = await b.getAttribute('data-note');
+      await b.click(); await q.fill('.modal [name=v]', 'Themed evening'); await q.click('.modal button[type=submit]');
+      await q.waitForSelector('.cal-day .n >> text=Themed evening');
+      if (!/#\/calendar/.test(q.url())) throw new Error('note button opened the day');
+      await q.click(`[data-note="${d}"]`); await q.click('#nclear'); await q.waitForTimeout(400);
+      if (await q.$('.cal-day .n >> text=Themed evening')) throw new Error('note not removed'); });
     await step('calendar: close and reopen a day with one click', async () => {
       const b = await q.$('.cal-toggle.is-open'); const d = await b.getAttribute('data-toggle');
       await b.click(); await q.waitForSelector(`.cal-toggle.is-closed[data-toggle="${d}"]`);

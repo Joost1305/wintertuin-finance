@@ -4,6 +4,7 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    day_note_title: 'Note for {d}', day_note_ph: 'e.g. Wintertuin Verteld, private party', day_note_hint: 'Shown in the roster and the Finance calendar. Keep it short.', day_note_clear: 'Remove note', day_note_add: 'Add a note', day_note_edit: 'Change the note',
     emp_view: 'Employee view', emp_view_hint: 'See the app exactly as staff see it', emp_view_on: 'Employee view: you see what staff see.', emp_view_off: 'Back to manager view',
     delete_day: 'Delete this day', delete_day_confirm: 'Delete everything for {d}? Covers, revenue, purchases and hours are removed. This cannot be undone.', day_deleted: 'Day deleted',
     no_default_category: 'No default category', inactive: 'inactive', order_online: 'Order online', customer_number: 'Customer number',
@@ -126,6 +127,7 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
+    day_note_title: 'Notitie voor {d}', day_note_ph: 'bijv. Wintertuin Verteld, besloten feest', day_note_hint: 'Zichtbaar in het rooster en de Finance-kalender. Houd het kort.', day_note_clear: 'Notitie weghalen', day_note_add: 'Notitie toevoegen', day_note_edit: 'Notitie wijzigen',
     emp_view: 'Medewerkerweergave', emp_view_hint: 'Zie de app precies zoals medewerkers hem zien', emp_view_on: 'Medewerkerweergave: je ziet wat medewerkers zien.', emp_view_off: 'Terug naar managerweergave',
     delete_day: 'Deze dag verwijderen', delete_day_confirm: 'Alles van {d} verwijderen? Couverts, omzet, inkoop en uren gaan weg. Dit kan niet ongedaan worden.', day_deleted: 'Dag verwijderd',
     no_default_category: 'Geen standaardcategorie', inactive: 'inactief', order_online: 'Online bestellen', customer_number: 'Klantnummer',

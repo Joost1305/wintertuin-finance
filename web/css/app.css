@@ -455,3 +455,9 @@ table.num-table td:first-child { white-space: nowrap; }
 .cal-toggle:hover { border-color: var(--primary); }
 @media (max-width: 820px) { .cal-toggle { font-size: .58rem; padding: 0 5px; } .cal-day .n { display: none; } }
 @media print { .cal-toggle { display: none; } }
+
+.cal-tools { display: flex; gap: 4px; align-items: center; margin-top: 3px; }
+.cal-tools .cal-toggle { margin-top: 0; }
+.cal-note-btn { min-height: 0; padding: 0 6px; border-radius: 999px; font-size: .7rem; line-height: 1.5; border: 1px solid transparent; background: transparent; color: var(--ink-3); cursor: pointer; }
+.cal-note-btn:hover, .cal-note-btn.has-note { border-color: var(--line); color: var(--accent); background: var(--surface); }
+@media print { .cal-note-btn { display: none; } }

@@ -1,6 +1,6 @@
 // Calendar: one glance at which days are entered. Green complete, amber partly, red missing,
 // grey closed (opening hours). Weather per day. Tap a day to open or correct it.
-import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, printHeader, refreshMeta } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, printHeader, refreshMeta, openModal } from '../core.js';
 import { isOpen } from '../calc.js';
 import { t } from '../i18n.js';
 import { sb, daysInRange, reportDays, ensureWeather } from '../data.js';
@@ -65,12 +65,13 @@ async function draw() {
     const clickable = iso <= today;
     const openNow = isOpen(iso, state.meta);
     const toggle = perm.settings() ? `<button type="button" class="cal-toggle ${openNow ? 'is-open' : 'is-closed'}" data-toggle="${iso}"
-      title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>` : '';
+      title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>
+      <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>` : '';
     html += `<div class="cal-day ${cls}" ${clickable ? `data-day="${iso}" role="button" tabindex="0"` : 'aria-disabled="true"'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
       <span class="d">${d}<span>${st === 'complete' ? '&#10003;' : ''}</span></span>
       <span class="w">${w ? `${weatherIcon(w.weather_code)} <span class="t">${fmt.num(Number(w.tmax), 0)}&deg;</span>` : ''}</span>
       ${note ? `<span class="n">${esc(note)}</span>` : ''}
-      <span class="r">${rev ? fmt.money(rev) : ''}</span>${toggle}</div>`;
+      <span class="r">${rev ? fmt.money(rev) : ''}</span>${toggle ? `<span class="cal-tools">${toggle}</span>` : ''}</div>`;
   }
   $('#cal').innerHTML = `<div class="cal-grid">${html}</div>`;
   $$('[data-day]').forEach((b) => {
@@ -91,6 +92,18 @@ async function draw() {
       draw();
     } catch (err) { toastError(err); b.disabled = false; }
   }));
+  $$('[data-note]').forEach((b) => (b.onclick = async (e) => {
+    e.stopPropagation();
+    const iso = b.dataset.note;
+    const ex = (state.meta.closures || []).find((c) => c.day === iso);
+    const v = await editDayNote(fmt.dayShort(iso), ex ? ex.note : '');
+    if (v === null) return;
+    try {
+      const { error } = await sb.rpc('fin_set_day_open', { p_day: iso, p_open: isOpen(iso, state.meta), p_note: v || null });
+      if (error) throw error;
+      await refreshMeta(); toast(t('saved')); draw();
+    } catch (err) { toastError(err); }
+  }));
   const totalRev = Object.values(revByDay).reduce((a, b) => a + b, 0);
   const covers = report.reduce((a, r) => a + (Number(r.covers) || 0), 0);
   $('#cal-sum').innerHTML = `<div class="grid grid-kpi">
@@ -99,4 +112,22 @@ async function draw() {
     <div class="kpi"><div class="label">${t('st_missing')}</div><div class="value txt-red">${counts.missing}</div></div>
     <div class="kpi"><div class="label">${t('revenue_excl')}</div><div class="value">${fmt.money(totalRev)}</div></div>
     <div class="kpi"><div class="label">${t('step_covers')}</div><div class="value">${fmt.num(covers)}</div></div></div>`;
+}
+
+// Small popup to add, change or remove the note of one day (themed evening, private event, ...)
+function editDayNote(dayLabel, current) {
+  return new Promise((resolve) => {
+    openModal(`<h2>${t('day_note_title', { d: esc(dayLabel) })}</h2><form id="nf">
+      <div class="field"><input name="v" maxlength="60" value="${esc(current || '')}" placeholder="${t('day_note_ph')}"></div>
+      <div class="tiny muted" style="margin:-6px 0 12px">${t('day_note_hint')}</div>
+      <div class="modal-actions" style="justify-content:space-between">
+        <div>${current ? `<button type="button" class="btn-ghost btn-danger" id="nclear">${t('day_note_clear')}</button>` : ''}</div>
+        <div style="display:flex;gap:8px"><button type="button" id="ncancel">${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></div></form>`,
+    (card, close) => {
+      const inp = card.querySelector('[name=v]'); inp.focus(); inp.select();
+      card.querySelector('#nf').onsubmit = (e) => { e.preventDefault(); close(); resolve(inp.value.trim()); };
+      card.querySelector('#ncancel').onclick = () => { close(); resolve(null); };
+      const clr = card.querySelector('#nclear'); if (clr) clr.onclick = () => { close(); resolve(''); };
+    });
+  });
 }
