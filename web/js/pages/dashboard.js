@@ -1,7 +1,7 @@
 // Dashboard: the Excel Dashboard and Cumulative tabs. Year to date KPIs, monthly trend,
 // targets, non-food budget and break-even.
 // Chart rules (as in WASTE log): one measure per chart, recessive grid, tables next to charts.
-import { state, app, esc, fmt, toastError, todayIso, addDaysIso, $, printHeader, printPage } from '../core.js';
+import { state, app, esc, fmt, toastError, todayIso, addDaysIso, $, $$, printHeader, printPage, openModal } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays } from '../data.js';
 import { sumDays, monthKpis, ytd, targetFor, traffic, openDaysInMonth, breakEvenPerDay, monthSeason, isOpen, closureNote } from '../calc.js';
@@ -65,10 +65,10 @@ async function load() {
   const tg = (m) => targetFor(meta, m, null);
 
   // KPI tiles
-  const tile = (label, value, tl, target) => `<div class="card kpi"><div class="label">${label}</div>
+  const tile = (label, value, tl, target, info) => `<div class="card kpi"><div class="label">${label}${info ? ` <button type="button" class="info-btn" data-info="${info}" aria-label="${t('how_calculated')}: ${esc(label)}" title="${t('how_calculated')}">i</button>` : ''}</div>
     <div class="value ${tl ? 'txt-' + tl : ''}">${tl ? `<span class="tl ${tl}"></span>` : ''}${value}</div>
     ${target != null ? `<div class="target">${t('target')} ${fmt.pct(target, 0)}</div>` : '<div class="target">&nbsp;</div>'}</div>`;
-  const pctTile = (label, v, metric) => tile(label, fmt.pct(v), traffic(v, metric ? tg(metric) : null), metric ? tg(metric) : null);
+  const pctTile = (label, v, metric, info) => tile(label, fmt.pct(v), traffic(v, metric ? tg(metric) : null), metric ? tg(metric) : null, info);
 
   // Break-even
   const fixedMonth = (meta.fixed || []).filter((f) => f.active).reduce((a, f) => a + Number(f.amount_month), 0);
@@ -84,14 +84,14 @@ async function load() {
   const budget = tg('nonfood_budget');
   $('#body').innerHTML = `
     <div class="grid grid-kpi four">
-      ${pctTile(t('ytd_food_cost'), Y.foodCostPct, 'food_cost')}
-      ${pctTile(t('ytd_bev_cost'), Y.bevCostPct, 'beverage_cost')}
-      ${pctTile(t('ytd_cost_of_sales'), Y.costOfSalesPct, null)}
-      ${pctTile(t('ytd_prime'), Y.primePct, 'prime_cost')}
-      ${pctTile(t('ytd_labor'), Y.laborPct, 'labor')}
-      ${tile(t('ytd_revenue'), fmt.money(Y.revenue), '', null)}
-      ${tile(t('ytd_covers'), fmt.num(Y.covers), '', null)}
-      ${tile(t('ytd_avg_spend'), fmt.money2(Y.avgSpend), '', null)}
+      ${pctTile(t('ytd_food_cost'), Y.foodCostPct, 'food_cost', 'food')}
+      ${pctTile(t('ytd_bev_cost'), Y.bevCostPct, 'beverage_cost', 'bev')}
+      ${pctTile(t('ytd_cost_of_sales'), Y.costOfSalesPct, null, 'cos')}
+      ${pctTile(t('ytd_prime'), Y.primePct, 'prime_cost', 'prime')}
+      ${pctTile(t('ytd_labor'), Y.laborPct, 'labor', 'labor')}
+      ${tile(t('ytd_revenue'), fmt.money(Y.revenue), '', null, 'revenue')}
+      ${tile(t('ytd_covers'), fmt.num(Y.covers), '', null, 'covers')}
+      ${tile(t('ytd_avg_spend'), fmt.money2(Y.avgSpend), '', null, 'spend')}
     </div>
     <div class="note">${t('labor_excl_partners_note', { l: fmt.pct(Y.laborPctStaff), p: fmt.pct(Y.primePctStaff) })}</div>
     <div class="card" style="margin-top:16px" id="events-card"><h2>${t('events_ahead')}</h2><div class="empty"><span class="spinner"></span></div></div>
@@ -136,6 +136,8 @@ async function load() {
       <tr class="total"><td>${t('total')}</td><td>${fmt.money(Y.nonfood)}</td><td>${fmt.money((budget || 0) * 12)}</td><td>${budget ? fmt.pct(Y.nonfood / (budget * 12), 0) : '–'}</td></tr>
       </tbody></table></div></div>
     </div>`;
+  // (i) on every tile: how the number is made, with this year's own figures
+  $$('[data-info]').forEach((b) => (b.onclick = () => showInfo(b.dataset.info, Y)));
   drawCharts(yearMonths);
   lastYear = { year, yearMonths, Y };
   plannedLabor(allRows);
@@ -238,4 +240,27 @@ async function plannedLabor(rows) {
       ${unlinked > 0 ? `<div class="note">${t('unlinked_hours_note', { h: fmt.num(unlinked, 1) })}</div>` : ''}
       ${perDay == null ? `<div class="note">${t('no_recent_revenue')}</div>` : ''}`;
   } catch (e) { box.innerHTML = `<h2>${t('planned_labor')}</h2><div class="small muted">${esc(e.message)}</div>`; }
+}
+
+// Popup behind the (i) on a dashboard tile: the formula in words plus the figures it used.
+function showInfo(key, Y) {
+  const m = (v) => (v == null ? '–' : fmt.money2(v));
+  const p = (v) => (v == null ? '–' : fmt.pct(v));
+  const line = (a, b, r) => `${a} ÷ ${b} = <strong>${r}</strong>`;
+  const tg = (metric) => targetFor(state.meta, metric, null);
+  const colours = (metric) => (tg(metric) != null ? `<p class="small muted">${t('info_colours', { t: fmt.pct(tg(metric), 0) })}</p>` : '');
+  const foodUsed = Y.foodCogs; const bevUsed = Y.bevCogs;
+  const body = {
+    food: `<p>${t('info_food')}</p><p>${t('info_stock')}</p><p>${t('info_this_year', { y: year })}: ${line(m(foodUsed), m(Y.foodRevenue), p(Y.foodCostPct))}</p>${colours('food_cost')}`,
+    bev: `<p>${t('info_bev')}</p><p>${t('info_stock')}</p><p>${t('info_this_year', { y: year })}: ${line(m(bevUsed), m(Y.bevRevenue), p(Y.bevCostPct))}</p>${Y.bevRevenue ? '' : `<p class="small muted">${t('info_dash')}</p>`}${colours('beverage_cost')}`,
+    cos: `<p>${t('info_cos')}</p><p>${t('info_this_year', { y: year })}: ${line(`(${m(foodUsed)} + ${m(bevUsed)})`, m(Y.revenue), p(Y.costOfSalesPct))}</p>`,
+    prime: `<p>${t('info_prime')}</p><p>${t('info_this_year', { y: year })}: ${line(`(${m(foodUsed)} + ${m(bevUsed)} + ${m(Y.laborAll)})`, m(Y.revenue), p(Y.primePct))}</p><p class="small muted">${t('info_partners', { r: p(Y.primePctStaff) })}</p>${colours('prime_cost')}`,
+    labor: `<p>${t('info_labor')}</p><p>${t('info_this_year', { y: year })}: ${line(m(Y.laborAll), m(Y.revenue), p(Y.laborPct))}</p><p class="small muted">${t('info_partners', { r: p(Y.laborPctStaff) })}</p>${colours('labor')}`,
+    revenue: `<p>${t('info_revenue')}</p><p>${t('info_this_year', { y: year })}: <strong>${m(Y.revenue)}</strong></p>`,
+    covers: `<p>${t('info_covers')}</p><p>${t('info_this_year', { y: year })}: <strong>${fmt.num(Y.covers)}</strong></p>`,
+    spend: `<p>${t('info_spend')}</p><p>${t('info_this_year', { y: year })}: ${line(m(Y.revenue), fmt.num(Y.covers), m(Y.avgSpend))}</p>`,
+  }[key];
+  if (!body) return;
+  openModal(`<h2>${t('how_calculated')}</h2><div class="info-pop">${body}<p class="small muted">${t('info_period')}</p></div>
+    <div class="modal-actions"><button type="button" class="btn-primary" data-close>${t('close')}</button></div>`);
 }

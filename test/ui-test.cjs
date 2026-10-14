@@ -126,6 +126,15 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.waitForSelector('#compare table');
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx');
       await q.screenshot({ path: `${OUT}/08-month.png`, fullPage: true }); });
+    await step('dashboard: every KPI tile has an (i) explaining the sum with real figures', async () => {
+      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#c-rev');
+      const n = (await q.$$('.grid-kpi [data-info]')).length; if (n !== 8) throw new Error('info buttons: ' + n);
+      await q.click('[data-info=food]'); await q.waitForSelector('.info-pop');
+      const txt = await q.textContent('.info-pop');
+      if (!/opening stock \+ purchases/.test(txt) || !/÷/.test(txt) || !/so far/.test(txt)) throw new Error('food info: ' + txt);
+      await q.click('.modal [data-close]');
+      await q.click('[data-info=labor]'); await q.waitForSelector('.info-pop'); if (!/hourly rate/.test(await q.textContent('.info-pop'))) throw new Error('labor info');
+      await q.click('.modal [data-close]'); });
     await step('dashboard with charts, planned labor and Excel export', async () => {
       await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#c-rev'); await q.waitForSelector('#planned-labor .kpi'); await q.waitForTimeout(600);
       if (!(await q.$('text=planned hours belong to people'))) throw new Error('no unlinked note');

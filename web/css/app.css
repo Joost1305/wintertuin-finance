@@ -501,3 +501,10 @@ tr.sc-current td { background: var(--primary-soft); }
   .card { break-inside: auto; page-break-inside: auto; }
   .kpi, .grid-kpi > .card, .chart-box, .card:has(.chart-box) { break-inside: avoid; page-break-inside: avoid; }
 }
+/* (i) on dashboard tiles */
+.info-btn { display: inline-grid; place-items: center; width: 18px; height: 18px; min-height: 0; padding: 0; margin-left: 4px; border-radius: 50%;
+  border: 1.5px solid var(--ink-3); background: transparent; color: var(--ink-3); font: italic 800 .7rem/1 Georgia, serif; text-transform: none;
+  letter-spacing: 0; vertical-align: 1px; cursor: pointer; }
+.info-btn:hover, .info-btn:focus-visible { border-color: var(--primary); color: var(--primary); }
+.info-pop p { margin: 0 0 10px; }
+@media print { .info-btn { display: none; } }
