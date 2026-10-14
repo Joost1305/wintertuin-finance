@@ -204,9 +204,19 @@ export function printHeader(title, selection) {
     <div class="print-title">${esc(title)}</div>${selection ? `<div>${esc(selection)}</div>` : ''}
     <div class="small">${t('printed')}: ${fmt.dateTime(new Date().toISOString())}</div></div>`;
 }
-function resizeCharts() {
+// Charts are printed as a still image next to the live canvas (only the image shows on paper). Safari often
+// prints a resizing canvas blank, and fires its print events too early to swap things around safely.
+function snapshotCharts() {
   if (!window.Chart) return;
-  Object.values(window.Chart.instances || {}).forEach((c) => { try { c.resize(); } catch { /* chart gone */ } });
+  Object.values(window.Chart.instances || {}).forEach((c) => {
+    try {
+      const canvas = c.canvas; if (!canvas || !canvas.isConnected) return;
+      let img = canvas.nextElementSibling;
+      if (!img || !img.classList.contains('chart-print')) { img = document.createElement('img'); img.className = 'chart-print'; img.alt = ''; canvas.after(img); }
+      img.src = c.toBase64Image();
+    } catch { /* chart gone */ }
+  });
 }
-window.addEventListener('beforeprint', resizeCharts);
-window.addEventListener('afterprint', resizeCharts);
+// Used by every Print button: freeze the charts first, then open the print window.
+export function printPage() { snapshotCharts(); setTimeout(() => window.print(), 60); }
+window.addEventListener('beforeprint', snapshotCharts); // also when someone presses Cmd+P

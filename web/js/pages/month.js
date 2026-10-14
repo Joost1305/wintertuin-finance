@@ -1,5 +1,5 @@
 // Month report: the Excel month tab. Totals, inventory counts, COGS and all cost percentages.
-import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, nameOf, parseAmount, printHeader } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, nameOf, parseAmount, printHeader, printPage } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays, ensureWeather } from '../data.js';
 import { sumDays, monthKpis, targetFor, traffic, monthSeason } from '../calc.js';
@@ -26,7 +26,7 @@ export async function renderMonth(args = []) {
   const shift = (n) => { let y = cur.y; let mm = cur.m + n; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } location.hash = `#/month/${y}-${pad(mm)}`; };
   $('#prev').onclick = () => shift(-1);
   $('#next').onclick = () => shift(1);
-  $('#print').onclick = () => window.print();
+  $('#print').onclick = printPage;
   $('#xlsx').onclick = () => { if (lastData) exportMonth(lastData); };
   await load();
 }

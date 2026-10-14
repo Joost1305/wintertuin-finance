@@ -1,6 +1,6 @@
 // Calendar: one glance at which days are entered. Green complete, amber partly, red missing,
 // grey closed (opening hours). Weather per day. Tap a day to open or correct it.
-import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, printHeader, refreshMeta, openModal } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, printHeader, refreshMeta, openModal, printPage } from '../core.js';
 import { isOpen } from '../calc.js';
 import { t } from '../i18n.js';
 import { sb, daysInRange, reportDays, ensureWeather } from '../data.js';
@@ -29,7 +29,7 @@ export async function renderCalendar(args = []) {
   const shift = (n) => { let y = cur.y; let mm = cur.m + n; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } location.hash = `#/calendar/${y}-${String(mm).padStart(2, '0')}`; };
   $('#prev').onclick = () => shift(-1);
   $('#next').onclick = () => shift(1);
-  $('#print').onclick = () => window.print();
+  $('#print').onclick = printPage;
   await draw();
 }
 

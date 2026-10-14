@@ -1,6 +1,6 @@
 // VAT overview per quarter: VAT on revenue (due) minus VAT on purchases (input VAT), per month and rate.
 // Indicative, for the accountant; the official return is theirs.
-import { state, app, esc, fmt, toastError, todayIso, $, printHeader } from '../core.js';
+import { state, app, esc, fmt, toastError, todayIso, $, printHeader, printPage } from '../core.js';
 import { t } from '../i18n.js';
 import { check, sb } from '../data.js';
 import { exportVat } from '../export.js';
@@ -24,7 +24,7 @@ export async function renderVat(args = [], el = app()) {
   const go = (n) => { let y = q.y; let qq = q.q + n; if (qq < 1) { qq = 4; y--; } if (qq > 4) { qq = 1; y++; } location.hash = `#/settings/vatreport/${y}-Q${qq}`; };
   $('#prev').onclick = () => go(-1);
   $('#next').onclick = () => go(1);
-  $('#print').onclick = () => window.print();
+  $('#print').onclick = printPage;
   $('#xlsx').onclick = () => exportVat({ label: `${q.y}-Q${q.q}`, rows: lastRows });
   try { await load(); } catch (e) { toastError(e); $('#body').innerHTML = ''; }
 }

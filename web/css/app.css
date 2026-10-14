@@ -281,7 +281,8 @@ td.actions { white-space: nowrap; text-align: right; }
   .grid-kpi { grid-template-columns: repeat(4, 1fr); }
   .grid-2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .chart-box { height: 210px; }
-  .chart-box canvas { max-width: 100% !important; }
+  .chart-box canvas { display: none !important; }
+  .chart-box img.chart-print { display: block !important; width: 100%; height: 100%; object-fit: contain; }
   .table-wrap { overflow: visible; }
   table { font-size: 9pt; }
   tr { break-inside: avoid; }
@@ -492,3 +493,11 @@ tr.sc-current td { background: var(--primary-soft); }
 #tgt.show-seasons .sea { display: table-cell; }
 .sea-sub { display: none; }
 #tgt.show-seasons ~ .sea-sub, .table-wrap:has(#tgt.show-seasons) + .sea-sub { display: block; }
+.chart-print { display: none; }
+/* print: Safari does not split side-by-side grid layouts across pages, so cards stack in print */
+@media print {
+  .grid-2, .grid-3 { display: block !important; }
+  .grid-2 > .card, .grid-3 > .card { margin: 0 0 12px !important; }
+  .card { break-inside: auto; page-break-inside: auto; }
+  .kpi, .grid-kpi > .card, .chart-box, .card:has(.chart-box) { break-inside: avoid; page-break-inside: avoid; }
+}

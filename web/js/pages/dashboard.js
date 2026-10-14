@@ -1,7 +1,7 @@
 // Dashboard: the Excel Dashboard and Cumulative tabs. Year to date KPIs, monthly trend,
 // targets, non-food budget and break-even.
 // Chart rules (as in WASTE log): one measure per chart, recessive grid, tables next to charts.
-import { state, app, esc, fmt, toastError, todayIso, addDaysIso, $, printHeader } from '../core.js';
+import { state, app, esc, fmt, toastError, todayIso, addDaysIso, $, printHeader, printPage } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays } from '../data.js';
 import { sumDays, monthKpis, ytd, targetFor, traffic, openDaysInMonth, breakEvenPerDay, monthSeason, isOpen, closureNote } from '../calc.js';
@@ -27,7 +27,7 @@ export async function renderDashboard(args = []) {
   $('#ph').innerHTML = printHeader(t('nav_dashboard'), String(year));
   $('#prev').onclick = () => { location.hash = `#/dashboard/${year - 1}`; };
   $('#next').onclick = () => { location.hash = `#/dashboard/${year + 1}`; };
-  $('#print').onclick = () => window.print();
+  $('#print').onclick = printPage;
   $('#xlsx').onclick = () => { if (lastYear) exportYear(lastYear); };
   try { await load(); } catch (e) { toastError(e); $('#body').innerHTML = ''; }
 }
