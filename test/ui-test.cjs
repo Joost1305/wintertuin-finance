@@ -193,6 +193,8 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.goto(BASE + '#/settings/navorder'); await q.waitForSelector('#save-nav');
       await q.fill('[data-nav=dashboard]', '1'); await q.click('#save-nav'); await q.waitForTimeout(400);
       const first = await q.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/dashboard') throw new Error('first is ' + first);
+      await q.goto(BASE + '#/home'); await q.waitForSelector('#c-rev'); if (!/#\/dashboard$/.test(q.url())) throw new Error('start page is ' + q.url());
+      await q.goto(BASE + '#/settings/navorder'); await q.waitForSelector('#save-nav');
       await q.click('#reset-nav'); await q.click('#save-nav'); await q.waitForTimeout(400);
       if ((await q.$eval('#nav a', (a) => a.getAttribute('href'))) !== '#/today') throw new Error('reset'); });
     await step('settings: add user shows password once', async () => {

@@ -28,7 +28,12 @@ const routes = [
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
-const homePath = () => 'today';
+// Start page: the first item of the top menu in the order set under Settings (Today when nothing is set)
+const homePath = () => {
+  if (!state.me) return 'today';
+  const visible = routes.filter((r) => r.nav && r.show()).map((r) => r.path);
+  return orderPaths(visible, state.rest && state.rest.nav_order)[0] || 'today';
+};
 
 async function ensureSession() {
   if (state.me) return true;
@@ -135,6 +140,7 @@ async function route() {
   }
   state.noAccess = false;
   if (!(await ensureSession())) { if (state.noAccess) return renderNoAccess(); location.hash = '#/login'; return; }
+  if (!path || path === 'home') { history.replaceState(null, '', `${location.pathname}${location.search}#/${homePath()}`); return route(); }
   const r = routes.find((x) => x.path === path && x.show());
   if (!r) { location.hash = `#/${homePath()}`; return; }
   renderShell();
@@ -147,7 +153,8 @@ window.addEventListener('hashchange', route);
 window.addEventListener('wt:lang', () => route());
 // Signed out in the other Wintertuin app (same login): follow along
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; } });
-if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings|password|vat)/.test(location.hash)) {
-  history.replaceState(null, '', `${location.pathname}${location.search}#/today`);
+if (!authLink && !/^#\/(login|home|today|calendar|month|dashboard|settings|password|vat)/.test(location.hash)) {
+  // open the start page once we know who is signed in (it depends on the menu order)
+  history.replaceState(null, '', `${location.pathname}${location.search}#/home`);
 }
 route();
