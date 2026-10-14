@@ -508,3 +508,10 @@ tr.sc-current td { background: var(--primary-soft); }
 .info-btn:hover, .info-btn:focus-visible { border-color: var(--primary); color: var(--primary); }
 .info-pop p { margin: 0 0 10px; }
 @media print { .info-btn { display: none; } }
+/* settings: order of the top menu */
+.order-list { display: flex; flex-direction: column; }
+.order-row { display: flex; align-items: center; gap: 12px; padding: 7px 0; border-bottom: 1px solid var(--line); margin: 0; }
+.order-row input { width: 64px; flex: none; text-align: center; font-variant-numeric: tabular-nums; }
+.order-move { display: inline-flex; gap: 3px; }
+.order-move button { min-height: 0; padding: 2px 7px; font-size: .7rem; border-radius: 6px; }
+.order-move button:disabled { opacity: .3; }

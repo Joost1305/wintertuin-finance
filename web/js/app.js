@@ -10,12 +10,15 @@ import { renderCalendar } from './pages/calendar.js';
 import { renderMonth } from './pages/month.js';
 import { renderDashboard } from './pages/dashboard.js';
 import { renderSettings } from './pages/settings.js';
+import { orderPaths } from './nav.js';
 
 console.log(`Wintertuin Finance, build ${BUILD}`);
 // One tab per app: the switch button in the other app targets this name and reuses this tab
 try { window.name = 'wintertuin-finance'; } catch { /* ignore */ }
 
 const RANK = { staff: 1, manager: 2, org_admin: 3, super_admin: 4 };
+window.addEventListener('nav-order-changed', () => renderShell());
+
 const routes = [
   { path: 'today', render: renderToday, nav: 'nav_today', show: () => true },
   { path: 'calendar', render: renderCalendar, nav: 'nav_calendar', show: perm.reports },
@@ -62,7 +65,9 @@ function renderShell() {
   top.hidden = false;
   const current = location.hash.replace(/^#\//, '').split('/')[0] || homePath();
   const nav = $('#nav');
-  nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
+  const visible = routes.filter((r) => r.nav && r.show());
+  const sorted = orderPaths(visible.map((r) => r.path), state.rest && state.rest.nav_order).map((p) => visible.find((r) => r.path === p));
+  nav.innerHTML = sorted.map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}</a>`).join('') +
     // Managers and admins change their password under Settings; staff (no Settings) keep it in the menu
     (perm.settings() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +

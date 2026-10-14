@@ -7,6 +7,7 @@ import { sb, check, list, insert, update, remove, adminUsers, setPassword } from
 import { seasonOf } from '../calc.js';
 import { renderVat } from './vat.js';
 import { renderSystemCheck } from './system-check.js';
+import { NAV_ITEMS, orderPaths, saveNavOrder } from '../nav.js';
 
 const SECTIONS = [
   { id: 'staff', label: 'set_staff', show: perm.settings },
@@ -19,6 +20,7 @@ const SECTIONS = [
   { id: 'targets', label: 'set_targets', show: perm.settings },
   { id: 'fixed', label: 'set_fixed', show: perm.settings },
   { id: 'restaurant', label: 'set_restaurant', show: perm.admin },
+  { id: 'navorder', label: 'set_nav_order', show: perm.admin },
   { id: 'users', label: 'set_users', show: perm.admin },
   { id: 'audit', label: 'set_audit', show: perm.admin },
   { id: 'system', label: 'set_system', show: perm.settings },
@@ -38,7 +40,7 @@ export async function renderSettings(args = []) {
     </div>`;
   $('#emp-on').onclick = () => { employeeView.set(true); location.hash = '#/today'; };
   if (!current) return;
-  const fn = { system: (el) => renderSystemCheck(el), vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
+  const fn = { navorder, system: (el) => renderSystemCheck(el), vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
   try { await fn($('#sec')); } catch (e) { toastError(e); }
 }
 
@@ -569,4 +571,32 @@ async function password(el) {
     if (f.pw.value !== f.pw2.value) return toastError(new Error(t('pw_mismatch')));
     try { await setPassword(f.pw.value); f.reset(); toast(t('pw_saved')); } catch (err) { toastError(err); }
   };
+}
+
+// ------------------------------------------------------------------ order of the top menu (per restaurant)
+// Number the menu items or move them with the arrows; 1 is on the left. The same for everyone in this restaurant.
+function navorder(el) {
+  let order = orderPaths(NAV_ITEMS.map(([p]) => p), state.rest && state.rest.nav_order);
+  const label = (p) => t(NAV_ITEMS.find(([x]) => x === p)[1]);
+  const draw = () => {
+    el.innerHTML = `<div class="card"><h2 style="margin:0">${t('set_nav_order')}</h2><div class="small muted">${t('nav_order_sub')}</div>
+      <div class="order-list" style="margin-top:12px">${order.map((p, i) => `<div class="order-row">
+        <input type="number" min="1" step="1" inputmode="numeric" value="${i + 1}" data-nav="${p}" aria-label="${t('position')}: ${esc(label(p))}">
+        <span style="flex:1"><strong>${esc(label(p))}</strong></span>
+        <span class="order-move"><button type="button" data-nup="${i}" ${i === 0 ? 'disabled' : ''} aria-label="${t('move_up')}">&#9650;</button><button type="button" data-ndown="${i}" ${i === order.length - 1 ? 'disabled' : ''} aria-label="${t('move_down')}">&#9660;</button></span></div>`).join('')}</div>
+      <div class="tiny muted" style="margin-top:8px">${t('nav_order_fixed')}</div>
+      <div style="display:flex;gap:8px;margin-top:12px"><button type="button" class="btn-primary" id="save-nav">${t('save')}</button><button type="button" class="btn-sm" id="reset-nav">${t('nav_order_reset')}</button></div></div>`;
+    const swap = (i, j) => { [order[i], order[j]] = [order[j], order[i]]; draw(); };
+    $$('[data-nup]', el).forEach((b) => (b.onclick = () => swap(Number(b.dataset.nup), Number(b.dataset.nup) - 1)));
+    $$('[data-ndown]', el).forEach((b) => (b.onclick = () => swap(Number(b.dataset.ndown), Number(b.dataset.ndown) + 1)));
+    $('#reset-nav', el).onclick = () => { order = NAV_ITEMS.map(([p]) => p); draw(); };
+    $('#save-nav', el).onclick = async () => {
+      // on equal numbers the item you just renumbered goes first (type 1 to put it in front)
+      const typed = order.map((p, i) => { const v = Number($(`[data-nav="${p}"]`, el).value); const n = Number.isFinite(v) && v > 0 ? v : Infinity; return { p, n, i, moved: n !== i + 1 }; });
+      typed.sort((a, b) => a.n - b.n || (b.moved - a.moved) || a.i - b.i);
+      order = typed.map((x) => x.p);
+      try { await saveNavOrder(order); toast(t('saved')); draw(); } catch (e) { toastError(e); }
+    };
+  };
+  draw();
 }

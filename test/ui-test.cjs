@@ -189,6 +189,12 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.waitForSelector('#tgt.show-seasons'); if ((await q.inputValue('[data-m=labor][data-s=winter]')) !== '35') throw new Error('winter not saved');
       await q.click('#tgt-seasons'); await q.click('#save-t'); await q.waitForTimeout(800);
       await q.waitForSelector('#tgt:not(.show-seasons)'); if (await q.isVisible('#tgt th.sea')) throw new Error('seasons not cleared'); });
+    await step('settings: top menu order by number, applied to the menu, reset', async () => {
+      await q.goto(BASE + '#/settings/navorder'); await q.waitForSelector('#save-nav');
+      await q.fill('[data-nav=dashboard]', '1'); await q.click('#save-nav'); await q.waitForTimeout(400);
+      const first = await q.$eval('#nav a', (a) => a.getAttribute('href')); if (first !== '#/dashboard') throw new Error('first is ' + first);
+      await q.click('#reset-nav'); await q.click('#save-nav'); await q.waitForTimeout(400);
+      if ((await q.$eval('#nav a', (a) => a.getAttribute('href'))) !== '#/today') throw new Error('reset'); });
     await step('settings: add user shows password once', async () => {
       await q.goto(BASE + '#/settings/users'); await q.waitForSelector('#add'); await q.click('#add');
       await q.fill('.modal [name=email]', 'new@example.test'); await q.fill('.modal [name=full_name]', 'New Person'); await q.click('.modal button[type=submit]');
