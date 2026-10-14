@@ -445,3 +445,13 @@ table.num-table td:first-child { white-space: nowrap; }
 .emp-bar { position: sticky; top: 0; z-index: 30; display: flex; justify-content: center; align-items: center; gap: 12px; flex-wrap: wrap;
   padding: 8px 16px; background: var(--accent-soft, #F6E7DC); color: var(--ink); font-weight: 600; font-size: .9rem; border-bottom: 1px solid var(--line); }
 @media print { .emp-bar { display: none !important; } }
+
+/* calendar: one-click open/closed for managers */
+.cal-day[role=button] { cursor: pointer; }
+.cal-day .n { font-size: .66rem; font-weight: 650; color: var(--accent); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cal-toggle { align-self: flex-start; margin-top: 3px; padding: 1px 8px; min-height: 0; border-radius: 999px; font-size: .66rem; font-weight: 650;
+  border: 1px solid var(--line); background: var(--surface); color: var(--good); cursor: pointer; }
+.cal-toggle.is-closed { color: var(--ink-3); background: transparent; }
+.cal-toggle:hover { border-color: var(--primary); }
+@media (max-width: 820px) { .cal-toggle { font-size: .58rem; padding: 0 5px; } .cal-day .n { display: none; } }
+@media print { .cal-toggle { display: none; } }

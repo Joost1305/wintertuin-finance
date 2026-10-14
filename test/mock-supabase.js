@@ -125,6 +125,12 @@
     from: (t) => new Q(t),
     rpc: async (name, args) => {
       if (name === 'fin_report_days') return reportDays(args);
+      if (name === 'fin_set_day_open') { const ex = db.fin_closures.find((c) => c.day === args.p_day);
+        if (ex) Object.assign(ex, { is_open: args.p_open, note: args.p_note }); else db.fin_closures.push({ id: uid(), organization_id: ORG, restaurant_id: REST, day: args.p_day, is_open: args.p_open, note: args.p_note });
+        return { data: null, error: null }; }
+      // People worked on Fridays and Saturdays (roster or clock-in); Sundays are open but nobody worked
+      if (name === 'fin_worked_days') { const out = []; const d = new Date(args.p_from + 'T12:00:00'); const end = new Date(args.p_to + 'T12:00:00');
+        for (; d <= end; d.setDate(d.getDate() + 1)) if (d.getDay() === 5 || d.getDay() === 6) out.push({ day: d.toLocaleDateString('sv-SE'), rostered: 3, clocked: 2 }); return { data: out, error: null }; }
       if (name === 'fin_day_hours_suggestion') return { data: db.fin_staff.filter((s) => s.user_id).map((s) => ({ staff_id: s.id, planned: 8, clocked: 7.6 })), error: null };
       if (name === 'fin_planned_labor') { const out = []; const d = new Date(args.p_from + 'T12:00:00'); for (let i = 0; i < 7; i++) { out.push({ day: d.toLocaleDateString('sv-SE'), hours_staff: 8, hours_partner: 4, cost_staff: 160, cost_partner: 120, hours_unlinked: i === 0 ? 3 : 0 }); d.setDate(d.getDate() + 1); } return { data: out, error: null }; }
       if (name === 'fin_vat_summary') {

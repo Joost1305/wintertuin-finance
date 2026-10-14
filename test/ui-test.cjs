@@ -95,7 +95,17 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await step('calendar shows colours and weather', async () => {
       await q.goto(BASE + '#/calendar'); await q.waitForSelector('.cal-grid');
       if (!(await q.$('.cal-day.complete'))) throw new Error('no green day'); if (!(await q.$('.cal-day.closed'))) throw new Error('no closed day');
+      // missing only where people worked (Fri/Sat in the mock); open Sundays without anyone working are quiet
+      const miss = await q.$$eval('.cal-day.missing[data-day]', (b) => b.map((x) => new Date(x.dataset.day + 'T12:00:00').getDay()));
+      if (miss.some((wd) => wd !== 5 && wd !== 6)) throw new Error('missing on a day nobody worked: ' + miss);
       await q.screenshot({ path: `${OUT}/07-calendar.png`, fullPage: true }); });
+    await step('calendar: close and reopen a day with one click', async () => {
+      const b = await q.$('.cal-toggle.is-open'); const d = await b.getAttribute('data-toggle');
+      await b.click(); await q.waitForSelector(`.cal-toggle.is-closed[data-toggle="${d}"]`);
+      if (!/#\/calendar/.test(q.url())) throw new Error('toggle opened the day');
+      await q.click(`.cal-toggle[data-toggle="${d}"]`); await q.waitForSelector(`.cal-toggle.is-open[data-toggle="${d}"]`);
+      const links = await q.$$eval('.settings-nav a', (a) => a.map((x) => x.getAttribute('href'))).catch(() => []);
+      if (links.includes('#/settings/closures')) throw new Error('closures still in settings'); });
     await step('VAT page per quarter with export', async () => {
       await q.goto(BASE + '#/vat'); await q.waitForSelector('#body .kpi');
       if (!/#\/settings\/vatreport/.test(q.url())) throw new Error('VAT not under Settings: ' + q.url());
@@ -120,7 +130,7 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await step('top bar: app switch next to the brand, no Password for managers', async () => {
       if (!(await q.isVisible('#app-switch'))) throw new Error('no switch');
       const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (links.includes('#/password')) throw new Error('password in menu'); });
-    for (const sec of ['vatreport', 'staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'closures', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
+    for (const sec of ['vatreport', 'staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
       await step(`settings: ${sec}`, async () => { await q.goto(BASE + '#/settings/' + sec); await q.waitForSelector('#sec .card'); });
     }
     await step('settings: add supplier via modal', async () => {

@@ -43,13 +43,17 @@ export function closureNote(iso, meta) {
   return ex ? ex.note || '' : '';
 }
 // complete | draft | missing | closed | future | today
-export function dayStatus(iso, row, meta, today) {
+// worked: optional Set of days on which someone was rostered or clocked in (team app).
+// With it, a past day is only "missing" when people worked; an open day without anyone working
+// counts as quiet (not opened). Without it (roster not reachable) the opening hours decide.
+export function dayStatus(iso, row, meta, today, worked) {
   if (row && row.status === 'complete') return 'complete';
   if (row && row.status === 'draft') return 'draft';
   const open = isOpen(iso, meta);
   if (iso > today) return open ? 'future' : 'closed';
-  if (!open) return 'closed';
-  return iso === today ? 'today' : 'missing';
+  if (iso === today) return open || (worked && worked.has(iso)) ? 'today' : 'closed';
+  if (worked) return worked.has(iso) ? 'missing' : open ? 'quiet' : 'closed';
+  return open ? 'missing' : 'closed';
 }
 export function openDaysInMonth(y, m, meta) {
   let n = 0;

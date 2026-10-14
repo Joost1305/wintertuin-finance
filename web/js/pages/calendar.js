@@ -1,8 +1,9 @@
 // Calendar: one glance at which days are entered. Green complete, amber partly, red missing,
 // grey closed (opening hours). Weather per day. Tap a day to open or correct it.
-import { state, app, esc, fmt, todayIso, $, $$, printHeader } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, printHeader, refreshMeta } from '../core.js';
+import { isOpen } from '../calc.js';
 import { t } from '../i18n.js';
-import { daysInRange, reportDays, ensureWeather } from '../data.js';
+import { sb, daysInRange, reportDays, ensureWeather } from '../data.js';
 import { dayStatus, closureNote } from '../calc.js';
 import { weatherIcon } from '../weather.js';
 
@@ -21,7 +22,8 @@ export async function renderCalendar(args = []) {
       <button type="button" class="btn-sm" id="next" aria-label="${t('next_month')}">&#8250;</button></div>
       <div id="cal"><div class="empty"><span class="spinner"></span></div></div>
       <div class="cal-legend"><span><i class="complete"></i>${t('st_complete')}</span><span><i class="draft"></i>${t('st_draft')}</span>
-        <span><i class="missing"></i>${t('st_missing')}</span><span><i class="closed"></i>${t('st_closed')}</span></div></div>
+        <span><i class="missing"></i>${t('st_missing')}</span><span><i class="closed"></i>${t('st_closed_or_quiet')}</span></div>
+      <div class="tiny muted" style="margin-top:6px">${t('cal_missing_rule')}${perm.settings() ? ` ${t('cal_toggle_hint')}` : ''}</div></div>
     <div class="card" id="cal-sum"></div>`;
   $('#ph').innerHTML = printHeader(t('nav_calendar'), fmt.month(cur.y, cur.m));
   const shift = (n) => { let y = cur.y; let mm = cur.m + n; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } location.hash = `#/calendar/${y}-${String(mm).padStart(2, '0')}`; };
@@ -37,10 +39,13 @@ async function draw() {
   const nDays = new Date(cur.y, cur.m, 0).getDate();
   const last = `${cur.y}-${pad(cur.m)}-${pad(nDays)}`;
   const today = todayIso();
-  const [days, report, weather] = await Promise.all([
+  const [days, report, weather, worked] = await Promise.all([
     daysInRange(state.rest.id, first, last),
     reportDays(state.rest.id, first, last),
     ensureWeather(state.rest, first, last),
+    // Who worked (roster or clock-in in the team app). If that cannot be read, fall back to the opening hours.
+    sb.rpc('fin_worked_days', { p_rest: state.rest.id, p_from: first, p_to: last })
+      .then(({ data, error }) => (error ? null : new Set((data || []).map((r) => r.day)))).catch(() => null),
   ]);
   const byDay = Object.fromEntries(days.map((d) => [d.day, d]));
   const revByDay = Object.fromEntries(report.map((r) => [r.day, Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other)]));
@@ -51,20 +56,41 @@ async function draw() {
   html += '<div class="cal-day blank"></div>'.repeat(lead);
   for (let d = 1; d <= nDays; d++) {
     const iso = `${cur.y}-${pad(cur.m)}-${pad(d)}`;
-    const st = dayStatus(iso, byDay[iso], state.meta, today);
+    const st = dayStatus(iso, byDay[iso], state.meta, today, worked);
     if (counts[st] != null) counts[st]++;
     const w = wByDay[iso];
     const rev = revByDay[iso];
     const note = closureNote(iso, state.meta);
-    const cls = `${st === 'today' ? 'today' : st}${iso === today ? ' today' : ''}`;
+    const cls = `${st === 'today' ? 'today' : st === 'quiet' ? 'closed quiet' : st}${iso === today ? ' today' : ''}`;
     const clickable = iso <= today;
-    html += `<button type="button" class="cal-day ${cls}" ${clickable ? `data-day="${iso}"` : 'disabled'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
+    const openNow = isOpen(iso, state.meta);
+    const toggle = perm.settings() ? `<button type="button" class="cal-toggle ${openNow ? 'is-open' : 'is-closed'}" data-toggle="${iso}"
+      title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>` : '';
+    html += `<div class="cal-day ${cls}" ${clickable ? `data-day="${iso}" role="button" tabindex="0"` : 'aria-disabled="true"'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
       <span class="d">${d}<span>${st === 'complete' ? '&#10003;' : ''}</span></span>
       <span class="w">${w ? `${weatherIcon(w.weather_code)} <span class="t">${fmt.num(Number(w.tmax), 0)}&deg;</span>` : ''}</span>
-      <span class="r">${rev ? fmt.money(rev) : ''}</span></button>`;
+      ${note ? `<span class="n">${esc(note)}</span>` : ''}
+      <span class="r">${rev ? fmt.money(rev) : ''}</span>${toggle}</div>`;
   }
   $('#cal').innerHTML = `<div class="cal-grid">${html}</div>`;
-  $$('[data-day]').forEach((b) => (b.onclick = () => { location.hash = `#/today/${b.dataset.day}`; }));
+  $$('[data-day]').forEach((b) => {
+    b.onclick = () => { location.hash = `#/today/${b.dataset.day}`; };
+    b.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); } };
+  });
+  // Managers: open or close a day with one click (same switch as in the team app roster)
+  $$('[data-toggle]').forEach((b) => (b.onclick = async (e) => {
+    e.stopPropagation();
+    const iso = b.dataset.toggle; const openNow = isOpen(iso, state.meta);
+    b.disabled = true;
+    try {
+      const ex = (state.meta.closures || []).find((c) => c.day === iso);
+      const { error } = await sb.rpc('fin_set_day_open', { p_day: iso, p_open: !openNow, p_note: ex ? ex.note : null });
+      if (error) throw error;
+      await refreshMeta();
+      toast(t(openNow ? 'day_now_closed' : 'day_now_open', { d: fmt.dayShort(iso) }));
+      draw();
+    } catch (err) { toastError(err); b.disabled = false; }
+  }));
   const totalRev = Object.values(revByDay).reduce((a, b) => a + b, 0);
   const covers = report.reduce((a, r) => a + (Number(r.covers) || 0), 0);
   $('#cal-sum').innerHTML = `<div class="grid grid-kpi">

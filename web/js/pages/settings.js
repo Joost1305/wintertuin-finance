@@ -15,7 +15,6 @@ const SECTIONS = [
   { id: 'vatreport', label: 'set_vat_report', show: perm.reports },
   { id: 'vat', label: 'set_vat', show: perm.settings },
   { id: 'hours', label: 'set_hours', show: perm.settings },
-  { id: 'closures', label: 'set_closures', show: perm.settings },
   { id: 'targets', label: 'set_targets', show: perm.settings },
   { id: 'fixed', label: 'set_fixed', show: perm.settings },
   { id: 'restaurant', label: 'set_restaurant', show: perm.admin },

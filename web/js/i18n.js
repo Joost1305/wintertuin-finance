@@ -61,7 +61,7 @@ const dict = {
     close_day: 'Close the day', day_closed: 'Day closed', day_closed_lead: 'Thank you. This day is green in the calendar.',
     make_change: 'Make a change', confirm_no_revenue: 'No revenue entered. Close the day anyway?',
     // calendar
-    st_complete: 'Complete', st_draft: 'Partly entered', st_missing: 'Missing', st_closed: 'Closed', st_future: 'Coming up', st_open: 'Open today',
+    st_complete: 'Complete', st_draft: 'Partly entered', st_missing: 'Missing', st_closed: 'Closed', st_future: 'Coming up', st_open: 'Open today', st_quiet: 'Nobody worked', day_click_open: 'Closed. Click to open this day.', day_click_close: 'Open. Click to close this day.', day_now_closed: '{d} is now closed', day_now_open: '{d} is now open', cal_toggle_hint: 'Open or Closed on a day switches it with one click. Regular opening hours are in Settings.', st_closed_or_quiet: 'Closed or nobody worked', cal_missing_rule: 'A day only counts as missing when someone was on the roster or clocked in that day.',
     // month
     month_summary: 'Monthly summary', revenue_total: 'Total revenue', rev_food: 'Food revenue', rev_bev: 'Beverage revenue', rev_other: 'Other revenue',
     food_cogs: 'Food cost (COGS)', bev_cogs: 'Beverage cost (COGS)', food_cost_pct: 'Food cost %', bev_cost_pct: 'Beverage cost %',
@@ -178,7 +178,7 @@ const dict = {
     revenue_excl: 'Omzet excl. btw', purchases_excl: 'Inkoop excl. btw', fill_in: 'Invullen',
     close_day: 'Dag afsluiten', day_closed: 'Dag afgesloten', day_closed_lead: 'Dank je. Deze dag staat groen in de kalender.',
     make_change: 'Iets aanpassen', confirm_no_revenue: 'Er is geen omzet ingevuld. Toch afsluiten?',
-    st_complete: 'Compleet', st_draft: 'Deels ingevuld', st_missing: 'Ontbreekt', st_closed: 'Gesloten', st_future: 'Komt nog', st_open: 'Vandaag open',
+    st_complete: 'Compleet', st_draft: 'Deels ingevuld', st_missing: 'Ontbreekt', st_closed: 'Gesloten', st_future: 'Komt nog', st_open: 'Vandaag open', st_quiet: 'Niemand gewerkt', day_click_open: 'Gesloten. Klik om deze dag te openen.', day_click_close: 'Open. Klik om deze dag te sluiten.', day_now_closed: '{d} is nu gesloten', day_now_open: '{d} is nu open', cal_toggle_hint: 'Open of Gesloten op een dag zet die dag met één klik om. Vaste openingstijden staan in Instellingen.', st_closed_or_quiet: 'Gesloten of niemand gewerkt', cal_missing_rule: 'Een dag telt alleen als ontbrekend als er die dag iemand op het rooster stond of was ingeklokt.',
     month_summary: 'Maandoverzicht', revenue_total: 'Totale omzet', rev_food: 'Omzet food', rev_bev: 'Omzet dranken', rev_other: 'Overige omzet',
     food_cogs: 'Kostprijs food (COGS)', bev_cogs: 'Kostprijs dranken (COGS)', food_cost_pct: 'Food cost %', bev_cost_pct: 'Beverage cost %',
     cost_of_sales_pct: 'Totale kostprijs %', labor_total: 'Personeelskosten', labor_staff: 'Team', labor_partners: 'Partners (fictief)',
