@@ -8,20 +8,20 @@ import { exportVat } from '../export.js';
 let q;
 let lastRows = [];
 
-export async function renderVat(args = []) {
+export async function renderVat(args = [], el = app()) {
   const now = todayIso();
   const m = /^(\d{4})-Q([1-4])$/.exec(args[0] || '');
   q = m ? { y: Number(m[1]), q: Number(m[2]) } : { y: Number(now.slice(0, 4)), q: Math.floor((Number(now.slice(5, 7)) - 1) / 3) + 1 };
   const label = `Q${q.q} ${q.y}`;
-  app().innerHTML = `<div id="ph"></div>
-    <div class="page-head"><div><h1>${t('nav_vat')}</h1><div class="muted small">${t('vat_sub')}</div></div>
+  el.innerHTML = `<div id="ph"></div>
+    <div class="page-head"><div><h2 style="margin:0">${t('set_vat_report')}</h2><div class="muted small">${t('vat_sub')}</div></div>
       <div class="page-actions no-print">
         <div class="month-nav"><button type="button" class="btn-sm" id="prev">&#8249;</button><strong>${label}</strong><button type="button" class="btn-sm" id="next">&#8250;</button></div>
         <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
         <button type="button" class="btn-sm" id="xlsx">&#11015; ${t('export_xlsx')}</button></div></div>
     <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
   $('#ph').innerHTML = printHeader(t('nav_vat'), label);
-  const go = (n) => { let y = q.y; let qq = q.q + n; if (qq < 1) { qq = 4; y--; } if (qq > 4) { qq = 1; y++; } location.hash = `#/vat/${y}-Q${qq}`; };
+  const go = (n) => { let y = q.y; let qq = q.q + n; if (qq < 1) { qq = 4; y--; } if (qq > 4) { qq = 1; y++; } location.hash = `#/settings/vatreport/${y}-Q${qq}`; };
   $('#prev').onclick = () => go(-1);
   $('#next').onclick = () => go(1);
   $('#print').onclick = () => window.print();

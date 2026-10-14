@@ -375,7 +375,16 @@ function stepDoneView() {
     </div>
     ${complete ? `<div class="path-nav single"><button type="button" class="btn-xl" data-goto="0">${t('make_change')}</button></div>`
       : `<div class="path-nav"><button type="button" class="btn-xl" id="back">${t('back')}</button>
-         <button type="button" class="btn-primary btn-xl" id="close-day">&#10003; ${t('close_day')}</button></div>`}`;
+         <button type="button" class="btn-primary btn-xl" id="close-day">&#10003; ${t('close_day')}</button></div>`}
+    ${s.day && perm.settings() ? `<div class="del-day"><button type="button" class="btn-ghost btn-danger btn-sm" id="del-day">&#128465; ${t('delete_day')}</button></div>` : ''}`;
+  // Managers: wipe this day completely (covers, revenue, purchases, hours) and start over
+  const del = $('#del-day');
+  if (del) del.onclick = async () => {
+    if (!(await confirmDialog(t('delete_day_confirm', { d: fmt.dayLong(s.date) }), t('delete_day')))) return;
+    Object.values(s.timers).forEach(clearTimeout);
+    s.pending = {};
+    try { await remove('fin_days', s.day.id); toast(t('day_deleted')); renderToday([s.date]); } catch (e) { toastError(e); }
+  };
   $$('[data-goto]', el).forEach((b) => (b.onclick = () => go(Number(b.dataset.goto))));
   const back = $('#back'); if (back) back.onclick = () => go(3);
   const btn = $('#close-day');

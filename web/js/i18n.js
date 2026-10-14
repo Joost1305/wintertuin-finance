@@ -4,7 +4,14 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
-    nav_vat: 'VAT', export_xlsx: 'Export to Excel', set_password: 'My password', set_password_sub: 'One login for Wintertuin Finance and the team app: this changes both.',
+    delete_day: 'Delete this day', delete_day_confirm: 'Delete everything for {d}? Covers, revenue, purchases and hours are removed. This cannot be undone.', day_deleted: 'Day deleted',
+    no_default_category: 'No default category', inactive: 'inactive', order_online: 'Order online', customer_number: 'Customer number',
+    sup_login: 'Login', sup_password: 'Password', show: 'Show', hide: 'Hide', account_manager: 'Account manager', sup_general_contact: 'General contact',
+    order_days: 'Order by', delivery_days: 'Delivery days', min_order: 'Minimum order', sup_login_notes: 'Login notes', sup_ordering: 'Ordering',
+    order_url: 'Online ordering link', website: 'Website', order_days_ph: 'e.g. Mon and Thu before 14:00', delivery_days_ph: 'e.g. Tue and Fri',
+    sup_login_head: 'Website login', sup_login_help: 'Only managers can see logins. They are not stored in the change history. A password manager is safer for important accounts.',
+    phone: 'Phone', notes: 'Notes', bad_url: 'That link is not a valid web address.', copy_failed: 'Copy did not work, select the text instead.',
+    set_vat_report: 'VAT per quarter', nav_vat: 'VAT', export_xlsx: 'Export to Excel', set_password: 'My password', set_password_sub: 'One login for Wintertuin Finance and the team app: this changes both.',
     h_clocked: 'clocked {h} h', h_planned: 'planned {h} h', hours_prefilled: 'Filled in from clock-ins (or the roster when nobody clocked). Check and adjust.',
     hours_use_suggestions: 'Use hours from clock-ins and roster', team_app_account: 'Team app account', not_linked: 'not linked',
     import_team_title: 'Import from the team app', import_team_sub: 'Link people to their team app login, so roster and clock-in hours flow into the daily closing and the planned labor cost.',
@@ -118,7 +125,14 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
-    nav_vat: 'Btw', export_xlsx: 'Exporteren naar Excel', set_password: 'Mijn wachtwoord', set_password_sub: 'Eén login voor Wintertuin Finance en de team-app: dit wijzigt beide.',
+    delete_day: 'Deze dag verwijderen', delete_day_confirm: 'Alles van {d} verwijderen? Couverts, omzet, inkoop en uren gaan weg. Dit kan niet ongedaan worden.', day_deleted: 'Dag verwijderd',
+    no_default_category: 'Geen standaardcategorie', inactive: 'inactief', order_online: 'Online bestellen', customer_number: 'Klantnummer',
+    sup_login: 'Login', sup_password: 'Wachtwoord', show: 'Toon', hide: 'Verberg', account_manager: 'Accountmanager', sup_general_contact: 'Algemeen contact',
+    order_days: 'Bestellen voor', delivery_days: 'Leverdagen', min_order: 'Minimale bestelling', sup_login_notes: 'Notities bij login', sup_ordering: 'Bestellen',
+    order_url: 'Link online bestellen', website: 'Website', order_days_ph: 'bijv. ma en do voor 14:00', delivery_days_ph: 'bijv. di en vr',
+    sup_login_head: 'Website-login', sup_login_help: 'Alleen managers zien logins. Ze komen niet in de wijzigingsgeschiedenis. Voor belangrijke accounts is een wachtwoordmanager veiliger.',
+    phone: 'Telefoon', notes: 'Notities', bad_url: 'Die link is geen geldig webadres.', copy_failed: 'Kopiëren lukte niet, selecteer de tekst.',
+    set_vat_report: 'Btw per kwartaal', nav_vat: 'Btw', export_xlsx: 'Exporteren naar Excel', set_password: 'Mijn wachtwoord', set_password_sub: 'Eén login voor Wintertuin Finance en de team-app: dit wijzigt beide.',
     h_clocked: 'ingeklokt {h} u', h_planned: 'gepland {h} u', hours_prefilled: 'Ingevuld uit het inklokken (of het rooster als niemand inklokte). Controleer en pas aan.',
     hours_use_suggestions: 'Uren uit inklokken en rooster gebruiken', team_app_account: 'Account team-app', not_linked: 'niet gekoppeld',
     import_team_title: 'Importeren uit de team-app', import_team_sub: 'Koppel mensen aan hun login in de team-app, zodat rooster- en inklokuren in de dagafsluiting en de geplande personeelskosten komen.',

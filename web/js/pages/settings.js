@@ -5,12 +5,14 @@ import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, nameOf,
 import { t } from '../i18n.js';
 import { sb, check, list, insert, update, remove, adminUsers, setPassword } from '../data.js';
 import { seasonOf } from '../calc.js';
+import { renderVat } from './vat.js';
 
 const SECTIONS = [
   { id: 'staff', label: 'set_staff', show: perm.settings },
   { id: 'streams', label: 'set_streams', show: perm.settings },
   { id: 'categories', label: 'set_categories', show: perm.settings },
   { id: 'suppliers', label: 'set_suppliers', show: perm.settings },
+  { id: 'vatreport', label: 'set_vat_report', show: perm.reports },
   { id: 'vat', label: 'set_vat', show: perm.settings },
   { id: 'hours', label: 'set_hours', show: perm.settings },
   { id: 'closures', label: 'set_closures', show: perm.settings },
@@ -33,7 +35,7 @@ export async function renderSettings(args = []) {
       <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
   if (!current) return;
-  const fn = { staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
+  const fn = { vatreport: (el) => renderVat(args.slice(1), el), staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
   try { await fn($('#sec')); } catch (e) { toastError(e); }
 }
 
@@ -191,23 +193,115 @@ async function categories(el) {
 }
 
 // ------------------------------------------------------------------ suppliers
+// Contact, online ordering and account manager are on the supplier. Website logins sit in
+// fin_supplier_logins: only managers can read them and they are kept out of the change history.
+const safeUrl = (u) => {
+  if (!u) return null;
+  const v = /^[a-z][a-z0-9+.-]*:/i.test(u) ? u : `https://${u}`;
+  return /^https?:\/\//i.test(v) ? v : null;
+};
+const hostOf = (u) => { try { return new URL(u).host.replace(/^www\./, ''); } catch { return u; } };
+const telHref = (p) => `tel:${String(p).replace(/[^\d+]/g, '')}`;
+const extLink = (u, label) => { const h = safeUrl(u); return h ? `<a href="${esc(h)}" target="_blank" rel="noopener noreferrer">${esc(label || hostOf(h))} &#8599;</a>` : ''; };
+
 async function suppliers(el) {
   const cats = state.meta.categories.map((c) => ({ value: c.id, label: nameOf(c) }));
-  crud(el, {
-    title: t('set_suppliers'), sub: t('set_suppliers_sub'), table: 'fin_suppliers', addLabel: t('add_supplier'),
-    rows: state.meta.suppliers,
-    columns: [
-      { label: t('name'), html: (r) => `<strong>${esc(r.name)}</strong>` },
-      { label: t('default_category'), html: (r) => esc(nameOf(state.meta.categories.find((c) => c.id === r.category_id))) },
-      { label: t('active'), html: (r) => yesNo(r.active) },
-    ],
-    fields: [
-      { name: 'name', label: t('name'), required: true },
-      { name: 'category_id', label: t('default_category'), type: 'select', options: cats, blank: true },
-      { name: 'sort_order', label: t('sort_order'), type: 'number' }, { name: 'active', label: t('active'), type: 'checkbox' },
-    ],
-    toRow: (v, row) => ({ name: v.name, category_id: v.category_id || null, sort_order: v.sort_order || 0, active: row ? !!v.active : true }),
-  });
+  const rows = state.meta.suppliers;
+  const logins = Object.fromEntries((check(await sb.from('fin_supplier_logins').select('*').eq('restaurant_id', rest().id)) || []).map((l) => [l.supplier_id, l]));
+  const line = (label, html) => (html ? `<div class="sup-line"><span class="muted">${label}</span><span>${html}</span></div>` : '');
+  const card = (r) => {
+    const lg = logins[r.id] || {};
+    const order = safeUrl(r.order_url);
+    const contact = [r.contact_name ? `<strong>${esc(r.contact_name)}</strong>` : '', r.contact_phone ? `<a href="${telHref(r.contact_phone)}">${esc(r.contact_phone)}</a>` : '',
+      r.contact_email ? `<a href="mailto:${esc(r.contact_email)}">${esc(r.contact_email)}</a>` : ''].filter(Boolean).join('<br>');
+    const general = [r.phone ? `<a href="${telHref(r.phone)}">${esc(r.phone)}</a>` : '', r.email ? `<a href="mailto:${esc(r.email)}">${esc(r.email)}</a>` : ''].filter(Boolean).join('<br>');
+    return `<div class="card sup-card ${r.active ? '' : 'inactive'}">
+      <div class="split"><div><h3 style="margin:0">${esc(r.name)}</h3>
+        <div class="small muted">${esc(nameOf(state.meta.categories.find((c) => c.id === r.category_id)) || t('no_default_category'))}${r.active ? '' : ` · ${t('inactive')}`}</div></div>
+        <div class="actions"><button type="button" class="btn-sm" data-edit="${r.id}">${t('edit')}</button>
+          <button type="button" class="btn-sm btn-ghost btn-danger" data-del="${r.id}">${t('delete')}</button></div></div>
+      ${order || r.website ? `<div class="sup-links">${order ? `<a class="btn-primary btn-sm" href="${esc(order)}" target="_blank" rel="noopener noreferrer">&#128722; ${t('order_online')} &#8599;</a>` : ''}
+        ${r.website ? extLink(r.website) : ''}</div>` : ''}
+      ${line(t('customer_number'), r.customer_number ? `${esc(r.customer_number)} <button type="button" class="btn-link" data-copy="${esc(r.customer_number)}">${t('copy')}</button>` : '')}
+      ${line(t('sup_login'), lg.username ? `${esc(lg.username)} <button type="button" class="btn-link" data-copy="${esc(lg.username)}">${t('copy')}</button>` : '')}
+      ${line(t('sup_password'), lg.password ? `<span class="pw-mask" data-pw="${r.id}">&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;&#8226;</span>
+        <button type="button" class="btn-link" data-show="${r.id}">${t('show')}</button> <button type="button" class="btn-link" data-copypw="${r.id}">${t('copy')}</button>` : '')}
+      ${line(t('account_manager'), contact)}
+      ${line(t('sup_general_contact'), general)}
+      ${line(t('order_days'), esc(r.order_days || ''))}
+      ${line(t('delivery_days'), esc(r.delivery_days || ''))}
+      ${line(t('min_order'), r.min_order != null ? fmt.money2(r.min_order) : '')}
+      ${lg.notes ? line(t('sup_login_notes'), `<span class="pre">${esc(lg.notes)}</span>`) : ''}
+      ${r.notes ? `<div class="small pre" style="margin-top:8px">${esc(r.notes)}</div>` : ''}
+    </div>`;
+  };
+  el.innerHTML = `<div class="card"><div class="split"><div><h2 style="margin:0">${t('set_suppliers')}</h2><div class="small muted">${t('set_suppliers_sub')}</div></div>
+      <button type="button" class="btn-primary btn-sm" id="add">+ ${t('add_supplier')}</button></div></div>
+    ${rows.length ? `<div class="grid grid-2 sup-grid">${rows.map(card).join('')}</div>` : `<div class="card empty">${t('nothing_yet')}</div>`}`;
+
+  const groups = [
+    [null, [{ name: 'name', label: t('name'), required: true },
+      { name: 'category_id', label: t('default_category'), type: 'select', options: cats, blank: true }]],
+    [t('sup_ordering'), [{ name: 'order_url', label: t('order_url'), placeholder: 'https://' },
+      { name: 'website', label: t('website'), placeholder: 'https://' },
+      { name: 'customer_number', label: t('customer_number') },
+      { name: 'order_days', label: t('order_days'), placeholder: t('order_days_ph') },
+      { name: 'delivery_days', label: t('delivery_days'), placeholder: t('delivery_days_ph') },
+      { name: 'min_order', label: t('min_order'), type: 'number' }]],
+    [t('sup_login_head'), [{ type: 'help', label: t('sup_login_help') },
+      { name: 'username', label: t('sup_login') }, { name: 'password', label: t('sup_password'), type: 'password' },
+      { name: 'login_notes', label: t('sup_login_notes'), type: 'textarea' }]],
+    [t('account_manager'), [{ name: 'contact_name', label: t('name') },
+      { name: 'contact_phone', label: t('phone'), type: 'tel' }, { name: 'contact_email', label: t('email'), type: 'email' }]],
+    [t('sup_general_contact'), [{ name: 'phone', label: t('phone'), type: 'tel' }, { name: 'email', label: t('email'), type: 'email' }]],
+    [t('notes'), [{ name: 'notes', label: t('notes'), type: 'textarea' },
+      { name: 'sort_order', label: t('sort_order'), type: 'number' }, { name: 'active', label: t('active'), type: 'checkbox' }]],
+  ];
+  const fields = groups.flatMap((g) => g[1]);
+  const open = (row) => {
+    const lg = row ? logins[row.id] || {} : {};
+    const vals = row ? { ...row, username: lg.username, password: lg.password, login_notes: lg.notes } : { active: true };
+    openModal(`<h2>${row ? esc(row.name) : t('add_supplier')}</h2><form id="f" autocomplete="off">
+      ${groups.map(([head, fs]) => `${head ? `<h3 class="form-head">${head}</h3>` : ''}${formHtml(fs, vals)}`).join('')}
+      <div class="modal-actions"><button type="button" data-close>${t('cancel')}</button><button class="btn-primary" type="submit">${t('save')}</button></div></form>`,
+    (cardEl, close) => {
+      const pw = cardEl.querySelector('[name=password]'); if (pw) pw.setAttribute('autocomplete', 'new-password');
+      cardEl.querySelector('#f').onsubmit = async (e) => {
+        e.preventDefault();
+        const v = readForm(cardEl, fields);
+        for (const k of ['order_url', 'website']) if (v[k] && !safeUrl(v[k])) return toastError(new Error(t('bad_url')));
+        const sup = { name: v.name, category_id: v.category_id || null, sort_order: v.sort_order || 0, active: row ? !!v.active : true,
+          website: v.website ? safeUrl(v.website) : null, order_url: v.order_url ? safeUrl(v.order_url) : null, customer_number: v.customer_number,
+          phone: v.phone, email: v.email, contact_name: v.contact_name, contact_phone: v.contact_phone, contact_email: v.contact_email,
+          order_days: v.order_days, delivery_days: v.delivery_days, min_order: v.min_order, notes: v.notes };
+        try {
+          const saved = row ? await update('fin_suppliers', row.id, sup) : await insert('fin_suppliers', { ...base(), ...sup });
+          const hasLogin = v.username || v.password || v.login_notes;
+          if (hasLogin) check(await sb.from('fin_supplier_logins').upsert({ supplier_id: saved.id, restaurant_id: saved.restaurant_id,
+            username: v.username, password: v.password, notes: v.login_notes }, { onConflict: 'supplier_id' }));
+          else if (logins[saved.id]) check(await sb.from('fin_supplier_logins').delete().eq('supplier_id', saved.id));
+          close(); toast(t('saved')); await reload(el, suppliers);
+        } catch (err) { toastError(err); }
+      };
+    });
+  };
+  $('#add', el).onclick = () => open(null);
+  $$('[data-edit]', el).forEach((b) => (b.onclick = () => open(rows.find((r) => r.id === b.dataset.edit))));
+  $$('[data-del]', el).forEach((b) => (b.onclick = async () => {
+    if (!(await confirmDialog(t('confirm_delete'), t('delete')))) return;
+    try { await remove('fin_suppliers', b.dataset.del); toast(t('deleted')); await reload(el, suppliers); }
+    catch (err) { toastError(new Error(/foreign key|violates/i.test(err.message) ? t('in_use_deactivate') : err.message)); }
+  }));
+  const copy = async (text) => { try { await navigator.clipboard.writeText(text); toast(t('copied')); } catch { toastError(new Error(t('copy_failed'))); } };
+  $$('[data-copy]', el).forEach((b) => (b.onclick = () => copy(b.dataset.copy)));
+  $$('[data-copypw]', el).forEach((b) => (b.onclick = () => copy(logins[b.dataset.copypw].password)));
+  $$('[data-show]', el).forEach((b) => (b.onclick = () => {
+    const m = $(`[data-pw="${b.dataset.show}"]`, el);
+    const shown = m.dataset.shown === '1';
+    m.textContent = shown ? '•'.repeat(8) : logins[b.dataset.show].password;
+    m.dataset.shown = shown ? '0' : '1';
+    b.textContent = shown ? t('show') : t('hide');
+  }));
 }
 
 // ------------------------------------------------------------------ VAT rates

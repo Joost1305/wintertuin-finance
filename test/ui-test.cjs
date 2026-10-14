@@ -98,6 +98,8 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.screenshot({ path: `${OUT}/07-calendar.png`, fullPage: true }); });
     await step('VAT page per quarter with export', async () => {
       await q.goto(BASE + '#/vat'); await q.waitForSelector('#body .kpi');
+      if (!/#\/settings\/vatreport/.test(q.url())) throw new Error('VAT not under Settings: ' + q.url());
+      if ((await q.$$eval('#nav a', (as) => as.map((a) => a.textContent))).some((x) => /^VAT$/.test(x.trim()))) throw new Error('VAT still in menu');
       await q.screenshot({ path: `${OUT}/13-vat.png`, fullPage: true });
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx'); });
     await step('month report with inventory count', async () => {
@@ -118,13 +120,34 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await step('top bar: app switch next to the brand, no Password for managers', async () => {
       if (!(await q.isVisible('#app-switch'))) throw new Error('no switch');
       const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (links.includes('#/password')) throw new Error('password in menu'); });
-    for (const sec of ['staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'closures', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
+    for (const sec of ['vatreport', 'staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'closures', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
       await step(`settings: ${sec}`, async () => { await q.goto(BASE + '#/settings/' + sec); await q.waitForSelector('#sec .card'); });
     }
     await step('settings: add supplier via modal', async () => {
       await q.goto(BASE + '#/settings/suppliers'); await q.waitForSelector('#add'); await q.click('#add');
       await q.fill('.modal [name=name]', 'Groenteboer Baarn'); await q.click('.modal button[type=submit]'); await q.waitForSelector('text=Groenteboer Baarn');
       await q.screenshot({ path: `${OUT}/10-settings.png`, fullPage: true }); });
+    await step('suppliers: order link, account manager and hidden login', async () => {
+      await q.click('[data-edit] >> nth=0'); await q.waitForSelector('.modal [name=order_url]');
+      await q.fill('.modal [name=order_url]', 'shop.bidfood.nl'); await q.fill('.modal [name=customer_number]', 'K-12345');
+      await q.fill('.modal [name=username]', 'keuken@wintertuin.nl'); await q.fill('.modal [name=password]', 'S3cret!pw');
+      await q.fill('.modal [name=contact_name]', 'Petra Jansen'); await q.fill('.modal [name=contact_phone]', '06 12 34 56 78'); await q.fill('.modal [name=contact_email]', 'petra@bidfood.nl');
+      await q.click('.modal button[type=submit]'); await q.waitForSelector('text=Petra Jansen');
+      const href = await q.getAttribute('a:has-text("Order online")', 'href'); if (href !== 'https://shop.bidfood.nl') throw new Error(href);
+      if (await q.$('text=S3cret!pw')) throw new Error('password visible before Show');
+      await q.click('[data-show]'); await q.waitForSelector('text=S3cret!pw');
+      if (!(await q.$('a[href="tel:0612345678"]'))) throw new Error('no tel link');
+      const audit = await q.evaluate(() => JSON.stringify(window.__mockdb.fin_audit_log || [])); if (/S3cret/.test(audit)) throw new Error('password in audit');
+      await q.screenshot({ path: `${OUT}/10b-suppliers.png`, fullPage: true }); });
+    await step('suppliers: javascript: links are refused', async () => {
+      await q.click('[data-edit] >> nth=0'); await q.fill('.modal [name=website]', 'javascript:alert(1)'); await q.click('.modal button[type=submit]');
+      await q.waitForSelector('.toast.error'); await q.click('.modal [data-close]'); });
+    await step('manager deletes a day, everything for that day is gone', async () => {
+      const day = await q.evaluate(() => window.__mockdb.fin_days[0].day);
+      await q.goto(BASE + '#/today/' + day); await q.waitForSelector('[data-step]');
+      await q.click('[data-step="4"]'); await q.waitForSelector('#del-day'); await q.click('#del-day'); await q.click('#cf-ok'); await q.waitForTimeout(400);
+      const left = await q.evaluate((d) => window.__mockdb.fin_days.some((x) => x.day === d), day); if (left) throw new Error('day still there');
+      await q.waitForSelector('#covers'); });
     await step('settings: staff rate saved', async () => {
       await q.goto(BASE + '#/settings/staff'); await q.waitForSelector('[data-edit]'); await q.click('[data-edit] >> nth=1');
       await q.fill('.modal [name=hourly_rate]', '25'); await q.click('.modal button[type=submit]'); await q.waitForSelector('text=€25.00'); });
@@ -163,6 +186,9 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       if (await s.$('#pick-date')) throw new Error('date picker visible for staff');
       await s.goto(BASE + '#/today/2020-01-01'); await s.waitForSelector('#covers');
       const sub = await s.textContent('.page-head .muted'); if (/2020/.test(sub)) throw new Error('old date opened'); });
+    await step('staff has no Delete this day button', async () => {
+      await s.fill('#covers', '12'); await s.waitForTimeout(900); await s.click('[data-step="4"]'); await s.waitForSelector('.sum-grid');
+      if (await s.$('#del-day')) throw new Error('delete visible for staff'); });
     await C.ctx.close();
     if (C.errors.length) { failed = true; console.log('ERRORS (staff):', C.errors); }
   } catch (e) { failed = true; console.log('\nFAILED:', e.message); }

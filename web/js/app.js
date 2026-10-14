@@ -10,7 +10,6 @@ import { renderCalendar } from './pages/calendar.js';
 import { renderMonth } from './pages/month.js';
 import { renderDashboard } from './pages/dashboard.js';
 import { renderSettings } from './pages/settings.js';
-import { renderVat } from './pages/vat.js';
 
 console.log(`Wintertuin Finance, build ${BUILD}`);
 
@@ -20,7 +19,7 @@ const routes = [
   { path: 'calendar', render: renderCalendar, nav: 'nav_calendar', show: perm.reports },
   { path: 'month', render: renderMonth, nav: 'nav_month', show: perm.reports },
   { path: 'dashboard', render: renderDashboard, nav: 'nav_dashboard', show: perm.reports },
-  { path: 'vat', render: renderVat, nav: 'nav_vat', show: perm.reports },
+  { path: 'vat', render: (args) => { location.replace(`#/settings/vatreport${args[0] ? `/${args[0]}` : ''}`); }, nav: null, show: perm.reports },
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
