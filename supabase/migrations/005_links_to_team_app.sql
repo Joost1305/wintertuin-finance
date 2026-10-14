@@ -1,0 +1,7 @@
+-- Wintertuin Finance: links to the team app (applied as fin_005..fin_007)
+-- fin_season, fin_last_sunday: seasons by the clock change
+-- fin_day_hours_suggestion: planned (roster) and clocked (check-ins) hours per linked person, for the daily closing
+-- fin_planned_labor: roster hours x hourly rates for the coming days (managers)
+-- fin_public_calendar: opening days and notes for the team app roster (any signed-in user)
+-- fin_vat_summary: VAT per month and rate, revenue and purchases (managers)
+-- Full definitions: see the Supabase project (database functions), created on 2026-10-14.

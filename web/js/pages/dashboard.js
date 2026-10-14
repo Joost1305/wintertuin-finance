@@ -1,12 +1,14 @@
 // Dashboard: the Excel Dashboard and Cumulative tabs. Year to date KPIs, monthly trend,
 // targets, non-food budget and break-even.
 // Chart rules (as in WASTE log): one measure per chart, recessive grid, tables next to charts.
-import { state, app, esc, fmt, toastError, todayIso, $, printHeader } from '../core.js';
+import { state, app, esc, fmt, toastError, todayIso, addDaysIso, $, printHeader } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays } from '../data.js';
-import { sumDays, monthKpis, ytd, targetFor, traffic, openDaysInMonth, breakEvenPerDay, monthSeason } from '../calc.js';
+import { sumDays, monthKpis, ytd, targetFor, traffic, openDaysInMonth, breakEvenPerDay, monthSeason, isOpen, closureNote } from '../calc.js';
+import { exportYear } from '../export.js';
 
 const charts = [];
+let lastYear = null;
 let year;
 const pad = (n) => String(n).padStart(2, '0');
 const css = (v) => getComputedStyle(document.documentElement).getPropertyValue(v).trim();
@@ -19,12 +21,14 @@ export async function renderDashboard(args = []) {
       <div class="page-actions no-print">
         <div class="month-nav"><button type="button" class="btn-sm" id="prev">&#8249;</button><strong>${year}</strong>
         <button type="button" class="btn-sm" id="next">&#8250;</button></div>
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button></div></div>
+        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
+        <button type="button" class="btn-sm" id="xlsx">&#11015; ${t('export_xlsx')}</button></div></div>
     <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
   $('#ph').innerHTML = printHeader(t('nav_dashboard'), String(year));
   $('#prev').onclick = () => { location.hash = `#/dashboard/${year - 1}`; };
   $('#next').onclick = () => { location.hash = `#/dashboard/${year + 1}`; };
   $('#print').onclick = () => window.print();
+  $('#xlsx').onclick = () => { if (lastYear) exportYear(lastYear); };
   try { await load(); } catch (e) { toastError(e); $('#body').innerHTML = ''; }
 }
 
@@ -90,6 +94,7 @@ async function load() {
       ${tile(t('ytd_avg_spend'), fmt.money2(Y.avgSpend), '', null)}
     </div>
     <div class="note">${t('labor_excl_partners_note', { l: fmt.pct(Y.laborPctStaff), p: fmt.pct(Y.primePctStaff) })}</div>
+    <div class="card" style="margin-top:16px" id="planned-labor"><h2>${t('planned_labor')}</h2><div class="empty"><span class="spinner"></span></div></div>
     <div class="grid grid-2" style="margin-top:16px">
       <div class="card"><h2>${t('revenue_per_month')}</h2><div class="chart-box"><canvas id="c-rev"></canvas></div></div>
       <div class="card"><h2>${t('cost_pct_per_month')}</h2><div class="chart-box"><canvas id="c-pct"></canvas></div></div>
@@ -131,6 +136,8 @@ async function load() {
       </tbody></table></div></div>
     </div>`;
   drawCharts(yearMonths);
+  lastYear = { year, yearMonths, Y };
+  plannedLabor(allRows);
 }
 
 function drawCharts(yearMonths) {
@@ -155,4 +162,45 @@ function drawCharts(yearMonths) {
       plugins: { legend: { position: 'bottom', labels: { boxWidth: 12, color: css('--ink-2') } }, tooltip: { callbacks: { label: (c) => `${c.dataset.label}: ${c.parsed.y}%` } } },
       scales: { x: { grid: { display: false }, ticks: tick }, y: { grid, ticks: { ...tick, callback: (v) => `${v}%` }, beginAtZero: true } } },
   }));
+}
+
+// Labor cost ahead: the roster in the team app x hourly rates, for the next 7 days.
+// Projected labor % uses the average revenue per open day of the last 4 weeks.
+async function plannedLabor(rows) {
+  const box = document.getElementById('planned-labor');
+  if (!box) return;
+  const today = todayIso();
+  const to = addDaysIso(today, 6);
+  try {
+    const plan = check(await sb.rpc('fin_planned_labor', { p_rest: state.rest.id, p_from: today, p_to: to })) || [];
+    const since = addDaysIso(today, -28);
+    const recent = rows.filter((r) => r.day >= since && r.day < today);
+    const recentRev = recent.reduce((a, r) => a + Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other), 0);
+    const recentOpen = recent.filter((r) => isOpen(r.day, state.meta)).length;
+    const perDay = recentOpen ? recentRev / recentOpen : null;
+    const openNext = plan.filter((d) => isOpen(d.day, state.meta)).length;
+    const expected = perDay != null ? perDay * openNext : null;
+    const sum = (k) => plan.reduce((a, d) => a + Number(d[k] || 0), 0);
+    const cost = sum('cost_staff') + sum('cost_partner');
+    const pct = expected ? cost / expected : null;
+    const pctStaff = expected ? sum('cost_staff') / expected : null;
+    const target = targetFor(state.meta, 'labor', null);
+    const tl = traffic(pct, target);
+    const unlinked = sum('hours_unlinked');
+    box.innerHTML = `<div class="split"><h2 style="margin:0">${t('planned_labor')}</h2><span class="small muted">${esc(fmt.date(today))} – ${esc(fmt.date(to))}</span></div>
+      <div class="grid grid-kpi four" style="margin-top:12px">
+        <div class="kpi"><div class="label">${t('planned_hours')}</div><div class="value">${fmt.num(sum('hours_staff') + sum('hours_partner'), 1)}</div></div>
+        <div class="kpi"><div class="label">${t('planned_cost')}</div><div class="value">${fmt.money(cost)}</div><div class="target">${t('of_which_partners', { v: fmt.money(sum('cost_partner')) })}</div></div>
+        <div class="kpi"><div class="label">${t('expected_revenue')}</div><div class="value">${expected == null ? '–' : fmt.money(expected)}</div><div class="target">${t('expected_revenue_sub', { n: openNext })}</div></div>
+        <div class="kpi"><div class="label">${t('projected_labor')}</div><div class="value ${tl ? 'txt-' + tl : ''}">${tl ? `<span class="tl ${tl}"></span>` : ''}${fmt.pct(pct)}</div>
+          <div class="target">${target != null ? `${t('target')} ${fmt.pct(target, 0)} · ` : ''}${t('without_partners')} ${fmt.pct(pctStaff)}</div></div>
+      </div>
+      <div class="table-wrap" style="margin-top:12px"><table class="num-table"><thead><tr><th>${t('day')}</th><th>${t('hours')}</th><th>${t('labor_staff')}</th><th>${t('labor_partners')}</th></tr></thead><tbody>
+      ${plan.map((d) => { const open = isOpen(d.day, state.meta); const note = closureNote(d.day, state.meta);
+        return `<tr class="${open ? '' : 'muted'}"><td>${esc(fmt.dayShort(d.day))}${note ? ` <span class="badge warn">${esc(note)}</span>` : open ? '' : ` <span class="small muted">${t('closed')}</span>`}</td>
+          <td>${fmt.num(Number(d.hours_staff) + Number(d.hours_partner) + Number(d.hours_unlinked), 1)}</td><td>${fmt.money(Number(d.cost_staff))}</td><td>${fmt.money(Number(d.cost_partner))}</td></tr>`; }).join('')}
+      </tbody></table></div>
+      ${unlinked > 0 ? `<div class="note">${t('unlinked_hours_note', { h: fmt.num(unlinked, 1) })}</div>` : ''}
+      ${perDay == null ? `<div class="note">${t('no_recent_revenue')}</div>` : ''}`;
+  } catch (e) { box.innerHTML = `<h2>${t('planned_labor')}</h2><div class="small muted">${esc(e.message)}</div>`; }
 }

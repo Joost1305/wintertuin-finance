@@ -22,9 +22,11 @@
     fin_suppliers: [],
     fin_staff: [['Joost', true], ['Jane', true], ['Carel', true], ['Kees', true], ['Sam', false]].map(([name, p], i) => ({ id: uid(), organization_id: ORG, restaurant_id: REST, name, is_partner: p, sort_order: i, active: true })),
     fin_staff_rates: [], fin_opening_hours: [], fin_closures: [], fin_targets: [], fin_fixed_costs: [],
+    profiles: [{ id: 'p-sam', full_name: 'Sam', email: 'sam@example.test', active: true }, { id: 'p-lisa', full_name: 'Lisa', email: 'lisa@example.test', active: true }],
     fin_days: [], fin_day_revenue: [], fin_purchases: [], fin_hours: [], fin_inventory_counts: [], fin_weather: [], fin_audit_log: [],
   };
   db.fin_suppliers.push({ id: uid(), organization_id: ORG, restaurant_id: REST, name: 'Bakker Groothandel', category_id: db.fin_purchase_categories[0].id, sort_order: 0, active: true });
+  db.fin_staff[4].user_id = 'p-sam';
   db.fin_staff_rates.push({ id: uid(), organization_id: ORG, restaurant_id: REST, staff_id: db.fin_staff[4].id, hourly_rate: 20, valid_from: '2000-01-01' });
   db.fin_staff_rates.push({ id: uid(), organization_id: ORG, restaurant_id: REST, staff_id: db.fin_staff[0].id, hourly_rate: 30, valid_from: '2000-01-01' });
   for (const season of ['summer', 'winter']) for (let wd = 1; wd <= 7; wd++) db.fin_opening_hours.push({ id: uid(), organization_id: ORG, restaurant_id: REST, season, weekday: wd, is_open: wd >= 5, open_time: wd >= 5 ? '08:00:00' : null, close_time: wd >= 5 ? '22:00:00' : null });
@@ -121,7 +123,18 @@
   if (/access_token=/.test(location.hash)) { localStorage.setItem('mock-session', '1'); setTimeout(() => { location.hash = ''; }, 50); }
   const client = {
     from: (t) => new Q(t),
-    rpc: async (name, args) => (name === 'fin_report_days' ? reportDays(args) : { data: null, error: null }),
+    rpc: async (name, args) => {
+      if (name === 'fin_report_days') return reportDays(args);
+      if (name === 'fin_day_hours_suggestion') return { data: db.fin_staff.filter((s) => s.user_id).map((s) => ({ staff_id: s.id, planned: 8, clocked: 7.6 })), error: null };
+      if (name === 'fin_planned_labor') { const out = []; const d = new Date(args.p_from + 'T12:00:00'); for (let i = 0; i < 7; i++) { out.push({ day: d.toLocaleDateString('sv-SE'), hours_staff: 8, hours_partner: 4, cost_staff: 160, cost_partner: 120, hours_unlinked: i === 0 ? 3 : 0 }); d.setDate(d.getDate() + 1); } return { data: out, error: null }; }
+      if (name === 'fin_vat_summary') {
+        const out = {}; for (const [tbl, kind] of [['fin_day_revenue', 'revenue'], ['fin_purchases', 'purchases']]) for (const r of db[tbl]) {
+          const d = db.fin_days.find((x) => x.id === r.day_id); if (!d || d.day < args.p_from || d.day > args.p_to) continue;
+          const k = `${d.day.slice(0, 7)}-01|${kind}|${r.vat_rate}`; out[k] = out[k] || { month: d.day.slice(0, 7) + '-01', kind, vat_rate: r.vat_rate, amount_ex: 0, vat_amount: 0 };
+          out[k].amount_ex += Number(r.amount_ex); out[k].vat_amount += Math.round(r.amount_ex * r.vat_rate * 100) / 100; }
+        return { data: Object.values(out), error: null }; }
+      return { data: null, error: null };
+    },
     functions: { invoke: async (name, { body }) => {
       if (body.action === 'list') return { data: { users: db.fin_app_users.map((u) => ({ ...u, email: u.full_name.toLowerCase() + '@example.test', last_sign_in_at: null })) }, error: null };
       if (body.action === 'create') { db.fin_app_users.push({ id: uid(), user_id: uid(), organization_id: ORG, role: body.role, full_name: body.full_name, language: body.language, active: true }); return { data: { ok: true, email: body.email, password: 'Abc123xyz9' }, error: null }; }

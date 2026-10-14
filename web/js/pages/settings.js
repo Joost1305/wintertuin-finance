@@ -3,7 +3,7 @@
 // Managers manage the daily lists; org admins also targets, fixed costs, restaurant and users.
 import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, $$, nameOf, openModal, confirmDialog, formHtml, readForm, round2, refreshMeta } from '../core.js';
 import { t } from '../i18n.js';
-import { sb, check, list, insert, update, remove, adminUsers } from '../data.js';
+import { sb, check, list, insert, update, remove, adminUsers, setPassword } from '../data.js';
 import { seasonOf } from '../calc.js';
 
 const SECTIONS = [
@@ -19,6 +19,7 @@ const SECTIONS = [
   { id: 'restaurant', label: 'set_restaurant', show: perm.admin },
   { id: 'users', label: 'set_users', show: perm.admin },
   { id: 'audit', label: 'set_audit', show: perm.admin },
+  { id: 'password', label: 'set_password', show: perm.settings },
 ];
 
 export async function renderSettings(args = []) {
@@ -32,7 +33,7 @@ export async function renderSettings(args = []) {
       <div class="settings-main">${current ? `<a class="settings-back" href="#/settings">&#8249; ${t('nav_settings')}</a><div id="sec"></div>` : ''}</div>
     </div>`;
   if (!current) return;
-  const fn = { staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit }[current.id];
+  const fn = { staff, streams, categories, suppliers, vat, hours, closures, targets, fixed, restaurant, users, audit, password }[current.id];
   try { await fn($('#sec')); } catch (e) { toastError(e); }
 }
 
@@ -85,6 +86,9 @@ function crud(el, { title, sub, rows, columns, fields, toRow, fromRow, table, on
 async function staff(el) {
   const m = state.meta;
   const rateOf = (id) => { const today = todayIso(); const r = (m.rates || []).filter((x) => x.staff_id === id && x.valid_from <= today).pop(); return r ? Number(r.hourly_rate) : null; };
+  // Team app accounts (same login system), to link people so their roster and clock-in hours flow into the daily closing
+  const profiles = check(await sb.from('profiles').select('id, full_name, email, active').order('full_name')) || [];
+  const profileName = (uid) => { const p = profiles.find((x) => x.id === uid); return p ? p.full_name : ''; };
   crud(el, {
     title: t('set_staff'), sub: t('set_staff_sub'), table: 'fin_staff', addLabel: t('add_person'),
     rows: m.staff,
@@ -92,6 +96,7 @@ async function staff(el) {
       { label: t('name'), html: (r) => `<strong>${esc(r.name)}</strong>` },
       { label: t('type'), html: (r) => (r.is_partner ? `<span class="badge green">${t('partner')}</span>` : t('team_member')) },
       { label: t('hourly_rate'), html: (r) => { const v = rateOf(r.id); return v == null ? `<span class="muted">${t('not_set')}</span>` : fmt.money2(v); } },
+      { label: t('team_app_account'), html: (r) => (r.user_id ? `&#128279; ${esc(profileName(r.user_id))}` : `<span class="muted">${t('not_linked')}</span>`) },
       { label: t('active'), html: (r) => yesNo(r.active) },
     ],
     fields: [
@@ -99,11 +104,13 @@ async function staff(el) {
       { name: 'is_partner', label: t('is_partner'), type: 'checkbox' },
       { name: 'hourly_rate', label: t('hourly_rate_field'), type: 'number', hint: t('hourly_rate_hint') },
       { name: 'rate_from', label: t('rate_valid_from'), type: 'date', hint: t('rate_from_hint') },
+      { name: 'user_id', label: t('team_app_account'), type: 'select', blank: true, blankLabel: t('not_linked'),
+        options: profiles.map((p) => ({ value: p.id, label: `${p.full_name}${p.email ? ` (${p.email})` : ''}` })) },
       { name: 'sort_order', label: t('sort_order'), type: 'number' },
       { name: 'active', label: t('active'), type: 'checkbox' },
     ],
     fromRow: (r) => ({ ...r, hourly_rate: rateOf(r.id), rate_from: todayIso() }),
-    toRow: (v, row) => ({ name: v.name, is_partner: !!v.is_partner, sort_order: v.sort_order || 0, active: row ? !!v.active : true }),
+    toRow: (v, row) => ({ name: v.name, is_partner: !!v.is_partner, user_id: v.user_id || null, sort_order: v.sort_order || 0, active: row ? !!v.active : true }),
     onSaved: async (saved, v, row) => {
       if (v.hourly_rate == null) return;
       const old = row ? rateOf(row.id) : null;
@@ -114,6 +121,27 @@ async function staff(el) {
     },
     canDelete: false,
   });
+  // Import: link people with the same name, add the rest of the active team app accounts as new people
+  const linked = new Set(m.staff.map((x) => x.user_id).filter(Boolean));
+  const todo = profiles.filter((p) => p.active !== false && !linked.has(p.id));
+  const box = document.createElement('div');
+  box.className = 'card';
+  box.innerHTML = `<div class="split"><div><h2 style="margin:0">${t('import_team_title')}</h2><div class="small muted">${t('import_team_sub')}</div></div>
+    <button type="button" class="btn-sm" id="import-team" ${todo.length ? '' : 'disabled'}>${t('import_team_btn', { n: todo.length })}</button></div>`;
+  el.appendChild(box);
+  const btn = box.querySelector('#import-team');
+  btn.onclick = async () => {
+    if (!(await confirmDialog(t('import_team_confirm', { n: todo.length }), t('import_team_ok'), false))) return;
+    btn.disabled = true;
+    try {
+      for (const p of todo) {
+        const same = m.staff.find((x) => !x.user_id && x.name.trim().toLowerCase() === p.full_name.trim().toLowerCase());
+        if (same) check(await sb.from('fin_staff').update({ user_id: p.id }).eq('id', same.id));
+        else check(await sb.from('fin_staff').insert({ ...base(), name: p.full_name, user_id: p.id, is_partner: false, sort_order: 50, active: true }));
+      }
+      toast(t('saved')); await reload(el, staff);
+    } catch (err) { toastError(err); btn.disabled = false; }
+  };
 }
 
 // ------------------------------------------------------------------ revenue streams
@@ -417,4 +445,19 @@ async function audit(el) {
       <td data-label="${t('what')}">${esc(tableName(r.table_name))}</td><td data-label="${t('action')}">${esc(t('act_' + r.action.toLowerCase()))}</td>
       <td data-label="${t('details')}" class="small">${summary(r)}</td></tr>`).join('') || `<tr><td colspan="5" class="empty">${t('nothing_yet')}</td></tr>`}
     </tbody></table></div></div>`;
+}
+
+// ------------------------------------------------------------------ own password (one login for both Wintertuin apps)
+async function password(el) {
+  el.innerHTML = `<div class="card" style="max-width:480px"><h2>${t('set_password')}</h2><p class="small muted" style="margin-top:-6px">${t('set_password_sub')}</p>
+    <form id="pw"><div class="field"><label>${t('pw_new')}</label><input type="password" name="pw" autocomplete="new-password" minlength="8" required></div>
+    <div class="field"><label>${t('pw_repeat')}</label><input type="password" name="pw2" autocomplete="new-password" minlength="8" required></div>
+    <button class="btn-primary" type="submit">${t('save')}</button></form></div>`;
+  $('#pw', el).onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target;
+    if (f.pw.value.length < 8) return toastError(new Error(t('pw_short')));
+    if (f.pw.value !== f.pw2.value) return toastError(new Error(t('pw_mismatch')));
+    try { await setPassword(f.pw.value); f.reset(); toast(t('pw_saved')); } catch (err) { toastError(err); }
+  };
 }

@@ -10,6 +10,7 @@ import { renderCalendar } from './pages/calendar.js';
 import { renderMonth } from './pages/month.js';
 import { renderDashboard } from './pages/dashboard.js';
 import { renderSettings } from './pages/settings.js';
+import { renderVat } from './pages/vat.js';
 
 console.log(`Wintertuin Finance, build ${BUILD}`);
 
@@ -19,6 +20,7 @@ const routes = [
   { path: 'calendar', render: renderCalendar, nav: 'nav_calendar', show: perm.reports },
   { path: 'month', render: renderMonth, nav: 'nav_month', show: perm.reports },
   { path: 'dashboard', render: renderDashboard, nav: 'nav_dashboard', show: perm.reports },
+  { path: 'vat', render: renderVat, nav: 'nav_vat', show: perm.reports },
   { path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
@@ -61,7 +63,10 @@ function renderShell() {
   const nav = $('#nav');
   nav.innerHTML = routes.filter((r) => r.nav && r.show()).map((r) =>
     `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}</a>`).join('') +
-    `<a href="https://joost1305.github.io/wintertuin-staff-app/" target="_blank" rel="noopener">${t('nav_staff_app')} &#8599;</a><a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a><a href="#/logout">${t('nav_logout')}</a>`;
+    // Managers and admins change their password under Settings; staff (no Settings) keep it in the menu
+    (perm.settings() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
+    `<a href="#/logout">${t('nav_logout')}</a>`;
+  $('#app-switch-label').textContent = t('nav_staff_app');
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));
@@ -134,7 +139,7 @@ window.addEventListener('hashchange', route);
 window.addEventListener('wt:lang', () => route());
 // Signed out in the other Wintertuin app (same login): follow along
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; } });
-if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings|password)/.test(location.hash)) {
+if (!authLink && !/^#\/(login|today|calendar|month|dashboard|settings|password|vat)/.test(location.hash)) {
   history.replaceState(null, '', `${location.pathname}${location.search}#/today`);
 }
 route();

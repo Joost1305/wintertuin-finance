@@ -64,8 +64,10 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await p.waitForFunction(() => document.querySelectorAll('.purchase-list li').length === 2);
       await p.screenshot({ path: `${OUT}/04-purchases.png`, fullPage: true });
       await p.click('#next'); await p.waitForSelector('[data-staff]'); });
-    await step('hours: no rates visible, fill two people', async () => {
-      const html = await p.content(); if (/€\s?20|20,00/.test(await p.textContent('#step'))) throw new Error('rate visible');
+    await step('hours: pre-filled from clock-ins, no rates visible, fill two people', async () => {
+      if (/€\s?20|20,00/.test(await p.textContent('#step'))) throw new Error('rate visible');
+      if ((await p.inputValue('[data-staff] >> nth=0')) !== '7,5') throw new Error('not prefilled: ' + await p.inputValue('[data-staff] >> nth=0'));
+      if (!(await p.$('text=clocked 7.6 h'))) throw new Error('no hint');
       await p.fill('[data-staff] >> nth=0', '6'); // Joost (partner) is listed under partners; first input is team member Sam
       await p.fill('[data-staff] >> nth=1', '8');
       await p.waitForTimeout(900);
@@ -94,15 +96,29 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.goto(BASE + '#/calendar'); await q.waitForSelector('.cal-grid');
       if (!(await q.$('.cal-day.complete'))) throw new Error('no green day'); if (!(await q.$('.cal-day.closed'))) throw new Error('no closed day');
       await q.screenshot({ path: `${OUT}/07-calendar.png`, fullPage: true }); });
+    await step('VAT page per quarter with export', async () => {
+      await q.goto(BASE + '#/vat'); await q.waitForSelector('#body .kpi');
+      await q.screenshot({ path: `${OUT}/13-vat.png`, fullPage: true });
+      const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx'); });
     await step('month report with inventory count', async () => {
       await q.goto(BASE + '#/month'); await q.waitForSelector('#inv-form');
       await q.fill('[name=food_begin]', '1000'); await q.fill('[name=food_end]', '800'); await q.click('#inv-form button[type=submit]');
       await q.waitForTimeout(500); await q.waitForSelector('#inv-form');
+      await q.waitForSelector('#compare table');
+      const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx');
       await q.screenshot({ path: `${OUT}/08-month.png`, fullPage: true }); });
-    await step('dashboard with charts', async () => {
-      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#c-rev'); await q.waitForTimeout(600);
+    await step('dashboard with charts, planned labor and Excel export', async () => {
+      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#c-rev'); await q.waitForSelector('#planned-labor .kpi'); await q.waitForTimeout(600);
+      if (!(await q.$('text=planned hours belong to people'))) throw new Error('no unlinked note');
+      const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error(dl.suggestedFilename());
       await q.screenshot({ path: `${OUT}/09-dashboard.png`, fullPage: true }); });
-    for (const sec of ['staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'closures', 'targets', 'fixed', 'restaurant', 'users', 'audit']) {
+    await step('settings: import team app accounts', async () => {
+      await q.goto(BASE + '#/settings/staff'); await q.waitForSelector('#import-team'); await q.click('#import-team'); await q.click('#cf-ok'); await q.waitForTimeout(500);
+      const lisa = await q.evaluate(() => window.__mockdb.fin_staff.find((s) => s.user_id === 'p-lisa')); if (!lisa) throw new Error('not imported'); });
+    await step('top bar: app switch next to the brand, no Password for managers', async () => {
+      if (!(await q.isVisible('#app-switch'))) throw new Error('no switch');
+      const links = await q.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (links.includes('#/password')) throw new Error('password in menu'); });
+    for (const sec of ['staff', 'streams', 'categories', 'suppliers', 'vat', 'hours', 'closures', 'targets', 'fixed', 'restaurant', 'users', 'audit', 'password']) {
       await step(`settings: ${sec}`, async () => { await q.goto(BASE + '#/settings/' + sec); await q.waitForSelector('#sec .card'); });
     }
     await step('settings: add supplier via modal', async () => {
@@ -130,9 +146,8 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       if (!(await R.page.$('#pw-form'))) throw new Error('skipped the password screen');
       await R.page.fill('[name=pw]', 'nieuwwachtwoord1'); await R.page.fill('[name=pw2]', 'nieuwwachtwoord1'); await R.page.click('#pw-form button[type=submit]');
       await R.page.waitForSelector('#covers'); });
-    await step('menu has Password link that opens the form', async () => {
-      await R.page.goto(BASE + '#/password'); await R.page.waitForSelector('#pw-form');
-      const links = await R.page.$$eval('#nav a', (as) => as.map((a) => a.getAttribute('href'))); if (!links.includes('#/password')) throw new Error(links.join(',')); });
+    await step('admins find their password under Settings', async () => {
+      await R.page.goto(BASE + '#/settings/password'); await R.page.waitForSelector('#pw'); });
     await R.ctx.close();
     if (R.errors.length) { failed = true; console.log('ERRORS (reset):', R.errors); }
 

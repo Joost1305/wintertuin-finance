@@ -283,19 +283,66 @@ async function addPurchase() {
 }
 
 // ------------------------------------------------------------------ 4. hours
-function stepHours() {
+// Suggested hours per person from the team app: clocked hours first, otherwise planned (roster).
+// Only people linked to a team app login (Settings, Staff and rates) get a suggestion.
+async function loadSuggestions() {
+  if (s.suggest) return s.suggest;
+  try {
+    const rows = check(await sb.rpc('fin_day_hours_suggestion', { p_rest: state.rest.id, p_day: s.date })) || [];
+    s.suggest = Object.fromEntries(rows.map((r) => [r.staff_id, { planned: Number(r.planned) || 0, clocked: Number(r.clocked) || 0 }]));
+  } catch { s.suggest = {}; }
+  return s.suggest;
+}
+const quarter = (h) => Math.round(h * 4) / 4;
+function suggestedValue(sg) { return sg ? (sg.clocked > 0 ? quarter(sg.clocked) : sg.planned > 0 ? quarter(sg.planned) : 0) : 0; }
+function saveHour(id, v) {
+  schedule('h:' + id, async () => {
+    const d = await day();
+    if (v == null) check(await sb.from('fin_hours').delete().eq('day_id', d.id).eq('staff_id', id));
+    else check(await sb.from('fin_hours').upsert({ day_id: d.id, staff_id: id, hours: v,
+      organization_id: state.rest.organization_id, restaurant_id: state.rest.id }, { onConflict: 'day_id,staff_id' }));
+  });
+}
+function applySuggestions() {
+  let n = 0;
+  for (const [id, sg] of Object.entries(s.suggest || {})) {
+    const v = suggestedValue(sg);
+    if (v > 0 && s.hours[id] !== v) { s.hours[id] = v; saveHour(id, v); n++; }
+  }
+  return n;
+}
+
+async function stepHours() {
   const el = $('#step');
+  if (!s.suggest) {
+    el.innerHTML = `<div class="empty"><span class="spinner"></span></div>`;
+    await loadSuggestions();
+    if (STEPS[s.step] !== 'hours') return; // moved on meanwhile
+    // Nothing entered yet: fill in from the team app, staff only check and adjust
+    if (!Object.keys(s.hours).length && applySuggestions()) s.prefilled = true;
+  }
+  const sug = s.suggest || {};
+  const hasSuggestions = Object.values(sug).some((x) => x.planned > 0 || x.clocked > 0);
   const people = state.meta.staff.filter((p) => p.active || s.hours[p.id] != null);
   const team = people.filter((p) => !p.is_partner);
   const partners = people.filter((p) => p.is_partner);
-  const row = (p) => `<div class="hours-row ${s.hours[p.id] > 0 ? 'on' : ''}"><div class="name"><strong>${esc(p.name)}</strong></div>
+  const hint = (p) => {
+    const sg = sug[p.id];
+    if (!sg || (!sg.planned && !sg.clocked)) return '';
+    return `<span class="tiny muted">${[sg.clocked ? t('h_clocked', { h: fmt.num(sg.clocked, 2) }) : '', sg.planned ? t('h_planned', { h: fmt.num(sg.planned, 2) }) : ''].filter(Boolean).join(' · ')}</span>`;
+  };
+  const row = (p) => `<div class="hours-row ${s.hours[p.id] > 0 ? 'on' : ''}"><div class="name"><strong>${esc(p.name)}</strong>${hint(p) ? `<br>${hint(p)}` : ''}</div>
     <input data-staff="${p.id}" inputmode="decimal" value="${s.hours[p.id] != null ? String(s.hours[p.id]).replace('.', ',') : ''}" placeholder="0" autocomplete="off" aria-label="${t('hours')}"></div>`;
   const total = () => Object.values(s.hours).reduce((a, b) => a + (b || 0), 0);
   el.innerHTML = `<h2>${t('hours_q')}</h2><p class="lead">${t('hours_lead')}</p>
+    ${s.prefilled ? `<div class="note" style="margin:0 0 10px">${t('hours_prefilled')}</div>` : ''}
+    ${hasSuggestions && !s.prefilled ? `<div style="margin:0 0 10px"><button type="button" class="btn-sm" id="use-sug">&#8635; ${t('hours_use_suggestions')}</button></div>` : ''}
     ${team.length ? `<div class="subhead">${t('team')}</div>${team.map(row).join('')}` : `<div class="small muted">${t('no_staff_yet')}</div>`}
     ${partners.length ? `<div class="subhead">${t('partners')}</div>${partners.map(row).join('')}` : ''}
     <div class="total-line"><span>${t('total_hours')}</span><span id="h-total">${fmt.num(total(), 2)}</span></div>
     ${navButtons()}`;
+  const use = $('#use-sug', el);
+  if (use) use.onclick = () => { applySuggestions(); s.prefilled = true; stepHours(); };
   $$('[data-staff]', el).forEach((inp) => (inp.oninput = () => {
     const id = inp.dataset.staff;
     let v = parseAmount(inp.value);
@@ -304,12 +351,7 @@ function stepHours() {
     if (v == null) delete s.hours[id]; else s.hours[id] = v;
     inp.closest('.hours-row').classList.toggle('on', v > 0);
     $('#h-total').textContent = fmt.num(total(), 2);
-    schedule('h:' + id, async () => {
-      const d = await day();
-      if (v == null) check(await sb.from('fin_hours').delete().eq('day_id', d.id).eq('staff_id', id));
-      else check(await sb.from('fin_hours').upsert({ day_id: d.id, staff_id: id, hours: v,
-        organization_id: state.rest.organization_id, restaurant_id: state.rest.id }, { onConflict: 'day_id,staff_id' }));
-    });
+    saveHour(id, v);
   }));
   bindNav();
 }

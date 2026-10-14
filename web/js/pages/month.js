@@ -4,8 +4,10 @@ import { t } from '../i18n.js';
 import { sb, check, reportDays, ensureWeather } from '../data.js';
 import { sumDays, monthKpis, targetFor, traffic, monthSeason } from '../calc.js';
 import { weatherIcon } from '../weather.js';
+import { exportMonth } from '../export.js';
 
 let cur;
+let lastData = null; // data of the shown month, for the Excel export
 const pad = (n) => String(n).padStart(2, '0');
 
 export async function renderMonth(args = []) {
@@ -17,13 +19,15 @@ export async function renderMonth(args = []) {
       <div class="page-actions no-print">
         <div class="month-nav"><button type="button" class="btn-sm" id="prev">&#8249;</button><strong>${esc(fmt.month(cur.y, cur.m))}</strong>
         <button type="button" class="btn-sm" id="next">&#8250;</button></div>
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button></div></div>
+        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
+        <button type="button" class="btn-sm" id="xlsx">&#11015; ${t('export_xlsx')}</button></div></div>
     <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
   $('#ph').innerHTML = printHeader(t('nav_month'), fmt.month(cur.y, cur.m));
   const shift = (n) => { let y = cur.y; let mm = cur.m + n; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } location.hash = `#/month/${y}-${pad(mm)}`; };
   $('#prev').onclick = () => shift(-1);
   $('#next').onclick = () => shift(1);
   $('#print').onclick = () => window.print();
+  $('#xlsx').onclick = () => { if (lastData) exportMonth(lastData); };
   await load();
 }
 
@@ -60,6 +64,7 @@ function draw(rows, inv, weather) {
     bev_end: inv.cur ? inv.cur.bev_end : null,
   };
   const k = monthKpis(s, counts);
+  lastData = { y: cur.y, m: cur.m, k, s, rows, weather };
   const tg = (m) => targetFor(meta, m, season);
   const pctRow = (label, val, target, cls = '') => {
     const tl = traffic(val, target);
@@ -134,6 +139,7 @@ function draw(rows, inv, weather) {
         <table class="kv" style="margin-top:12px">${money(t('cat_food_all'), s.pur_food, 'sub')}${money(t('cat_beverage'), s.pur_beverage, 'sub')}
           ${money(t('cat_nonfood_all'), s.nonfood, 'sub')}<tr class="sub"><td class="muted">${t('vat_on_purchases')}</td><td class="muted">${fmt.money2(s.pur_vat)}</td></tr></table></div></div>
     </div>
+    <div class="card" style="margin-top:16px" id="compare"><h2>${t('compare_title')}</h2><div class="empty"><span class="spinner"></span></div></div>
     <div class="card" style="margin-top:16px"><h2>${t('per_day')}</h2><div class="table-wrap"><table class="num-table">
       <thead><tr><th>${t('date')}</th><th></th><th>${t('step_covers')}</th><th>${t('revenue_excl')}</th><th>${t('purchases_excl')}</th><th>${t('hours')}</th>${perm.reports() ? `<th>${t('labor_total')}</th>` : ''}</tr></thead><tbody>
       ${rows.map((r) => { const w = wBy[r.day]; const rev = Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other);
@@ -144,6 +150,7 @@ function draw(rows, inv, weather) {
           <td>${fmt.money2(Number(r.labor_staff) + Number(r.labor_partner))}</td></tr>`; }).join('') || `<tr><td colspan="7" class="muted">${t('no_data')}</td></tr>`}
       </tbody></table></div></div>`;
 
+  compare(k);
   $('#inv-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
@@ -160,4 +167,48 @@ function draw(rows, inv, weather) {
       load();
     } catch (err) { toastError(err); }
   };
+}
+
+// KPIs of any month, the same way as above (beginning stock falls back to last month's ending stock)
+async function kpisFor(y, m) {
+  const first = `${y}-${pad(m)}-01`;
+  const lastDay = `${y}-${pad(m)}-${pad(new Date(y, m, 0).getDate())}`;
+  const [rows, inv] = await Promise.all([reportDays(state.rest.id, first, lastDay), loadInventory(y, m)]);
+  if (!rows.length) return null;
+  const counts = {
+    food_begin: inv.cur && inv.cur.food_begin != null ? inv.cur.food_begin : inv.prev ? inv.prev.food_end : null,
+    bev_begin: inv.cur && inv.cur.bev_begin != null ? inv.cur.bev_begin : inv.prev ? inv.prev.bev_end : null,
+    food_end: inv.cur ? inv.cur.food_end : null, bev_end: inv.cur ? inv.cur.bev_end : null,
+  };
+  return monthKpis(sumDays(rows), counts);
+}
+
+// This month next to last month and the same month last year
+async function compare(k) {
+  const box = document.getElementById('compare');
+  if (!box) return;
+  const pm = cur.m === 1 ? { y: cur.y - 1, m: 12 } : { y: cur.y, m: cur.m - 1 };
+  const shown = { ...cur };
+  try {
+    const [prev, ly] = await Promise.all([kpisFor(pm.y, pm.m), kpisFor(cur.y - 1, cur.m)]);
+    if (shown.y !== cur.y || shown.m !== cur.m) return; // user moved on
+    const rowsDef = [
+      ['revenue_total', 'revenue', 'money', true], ['step_covers', 'covers', 'num', true], ['avg_spend', 'avgSpend', 'money2', true],
+      ['food_cost_pct', 'foodCostPct', 'pct', false], ['bev_cost_pct', 'bevCostPct', 'pct', false], ['labor_pct', 'laborPct', 'pct', false], ['prime_pct', 'primePct', 'pct', false],
+    ];
+    const show = (v, f) => (v == null ? '–' : f === 'money' ? fmt.money(v) : f === 'money2' ? fmt.money2(v) : f === 'pct' ? fmt.pct(v) : fmt.num(v));
+    const delta = (a, b, f, upGood) => {
+      if (a == null || b == null) return '';
+      if (f === 'pct') { const d = (a - b) * 100; if (Math.abs(d) < 0.05) return ''; const good = upGood ? d > 0 : d < 0;
+        return `<span class="small ${good ? 'txt-green' : 'txt-red'}">${d > 0 ? '+' : ''}${fmt.num(d, 1)} pt</span>`; }
+      if (!b) return ''; const d = (a - b) / Math.abs(b); if (Math.abs(d) < 0.005) return ''; const good = upGood ? d > 0 : d < 0;
+      return `<span class="small ${good ? 'txt-green' : 'txt-red'}">${d > 0 ? '+' : ''}${fmt.num(d * 100, 0)}%</span>`;
+    };
+    box.innerHTML = `<h2>${t('compare_title')}</h2><div class="table-wrap"><table class="num-table">
+      <thead><tr><th>${t('metric')}</th><th>${esc(fmt.month(cur.y, cur.m))}</th><th>${esc(fmt.month(pm.y, pm.m))}</th><th>${esc(fmt.month(cur.y - 1, cur.m))}</th></tr></thead><tbody>
+      ${rowsDef.map(([label, key, f, upGood]) => `<tr><td>${t(label)}</td><td><strong>${show(k[key], f)}</strong></td>
+        <td>${show(prev && prev[key], f)} ${delta(k[key], prev && prev[key], f, upGood)}</td>
+        <td>${show(ly && ly[key], f)} ${delta(k[key], ly && ly[key], f, upGood)}</td></tr>`).join('')}
+      </tbody></table></div><div class="small muted" style="margin-top:6px">${t('compare_note')}</div>`;
+  } catch (e) { box.innerHTML = `<h2>${t('compare_title')}</h2><div class="small muted">${esc(e.message)}</div>`; }
 }

@@ -4,6 +4,18 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    nav_vat: 'VAT', export_xlsx: 'Export to Excel', set_password: 'My password', set_password_sub: 'One login for Wintertuin Finance and the team app: this changes both.',
+    h_clocked: 'clocked {h} h', h_planned: 'planned {h} h', hours_prefilled: 'Filled in from clock-ins (or the roster when nobody clocked). Check and adjust.',
+    hours_use_suggestions: 'Use hours from clock-ins and roster', team_app_account: 'Team app account', not_linked: 'not linked',
+    import_team_title: 'Import from the team app', import_team_sub: 'Link people to their team app login, so roster and clock-in hours flow into the daily closing and the planned labor cost.',
+    import_team_btn: 'Import {n} accounts', import_team_confirm: 'Link or add {n} team app accounts? People with the same name are linked, the others are added as team members (set their hourly rate after).',
+    import_team_ok: 'Import', planned_labor: 'Planned labor, next 7 days', planned_hours: 'Planned hours', planned_cost: 'Planned labor cost', of_which_partners: 'of which partners {v}',
+    expected_revenue: 'Expected revenue', expected_revenue_sub: '{n} open days × average of the last 4 weeks', projected_labor: 'Projected labor %', without_partners: 'without partners',
+    unlinked_hours_note: '{h} planned hours belong to people who are not linked to a finance person. Link them under Settings, Staff and rates, to include their cost.',
+    no_recent_revenue: 'No revenue in the last 4 weeks yet, so the expected revenue cannot be estimated.',
+    compare_title: 'Compared with last month and last year', compare_note: 'Green is better, red is worse. Cost percentages show the difference in percentage points.',
+    vat_sub: 'VAT on revenue minus VAT on purchases, per quarter.', vat_due_label: 'VAT on revenue', vat_input_label: 'VAT on purchases', vat_kind: 'Kind',
+    vat_to_pay: 'To pay (indicative)', vat_to_reclaim: 'To reclaim (indicative)', vat_note: 'Indicative, based on what was entered. The official VAT return is done by your accountant.',
     // navigation
     nav_today: 'Today', nav_calendar: 'Calendar', nav_month: 'Month', nav_dashboard: 'Dashboard', nav_settings: 'Settings', nav_staff_app: 'Team app', nav_password: 'Password', nav_logout: 'Sign out',
     // login
@@ -106,6 +118,18 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
+    nav_vat: 'Btw', export_xlsx: 'Exporteren naar Excel', set_password: 'Mijn wachtwoord', set_password_sub: 'Eén login voor Wintertuin Finance en de team-app: dit wijzigt beide.',
+    h_clocked: 'ingeklokt {h} u', h_planned: 'gepland {h} u', hours_prefilled: 'Ingevuld uit het inklokken (of het rooster als niemand inklokte). Controleer en pas aan.',
+    hours_use_suggestions: 'Uren uit inklokken en rooster gebruiken', team_app_account: 'Account team-app', not_linked: 'niet gekoppeld',
+    import_team_title: 'Importeren uit de team-app', import_team_sub: 'Koppel mensen aan hun login in de team-app, zodat rooster- en inklokuren in de dagafsluiting en de geplande personeelskosten komen.',
+    import_team_btn: '{n} accounts importeren', import_team_confirm: '{n} accounts uit de team-app koppelen of toevoegen? Mensen met dezelfde naam worden gekoppeld, de rest wordt toegevoegd als teamlid (stel daarna hun uurtarief in).',
+    import_team_ok: 'Importeren', planned_labor: 'Geplande personeelskosten, komende 7 dagen', planned_hours: 'Geplande uren', planned_cost: 'Geplande personeelskosten', of_which_partners: 'waarvan partners {v}',
+    expected_revenue: 'Verwachte omzet', expected_revenue_sub: '{n} openingsdagen × gemiddelde van de laatste 4 weken', projected_labor: 'Verwacht personeel %', without_partners: 'zonder partners',
+    unlinked_hours_note: '{h} geplande uren horen bij mensen die niet aan een persoon in financiën gekoppeld zijn. Koppel ze bij Instellingen, Medewerkers en tarieven, om hun kosten mee te tellen.',
+    no_recent_revenue: 'Nog geen omzet in de laatste 4 weken, dus de verwachte omzet kan nog niet geschat worden.',
+    compare_title: 'Vergeleken met vorige maand en vorig jaar', compare_note: 'Groen is beter, rood is slechter. Kostenpercentages tonen het verschil in procentpunten.',
+    vat_sub: 'Btw over omzet min btw over inkoop, per kwartaal.', vat_due_label: 'Btw over omzet', vat_input_label: 'Btw over inkoop', vat_kind: 'Soort',
+    vat_to_pay: 'Te betalen (indicatief)', vat_to_reclaim: 'Terug te vragen (indicatief)', vat_note: 'Indicatief, op basis van wat is ingevoerd. De officiële btw-aangifte doet je boekhouder.',
     nav_today: 'Vandaag', nav_calendar: 'Kalender', nav_month: 'Maand', nav_dashboard: 'Dashboard', nav_settings: 'Instellingen', nav_staff_app: 'Team-app', nav_password: 'Wachtwoord', nav_logout: 'Uitloggen',
     login_title: 'Inloggen', login_sub: 'Wintertuin Finance', email: 'E-mail', password: 'Wachtwoord', sign_in: 'Inloggen',
     login_note: 'Eén login voor Wintertuin Finance en de team-app. Voor financiën heb je toegang van een admin nodig.',
