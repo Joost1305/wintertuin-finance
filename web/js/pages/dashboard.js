@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { sb, check, reportDays } from '../data.js';
 import { sumDays, monthKpis, ytd, targetFor, traffic, openDaysInMonth, breakEvenPerDay, monthSeason, isOpen, closureNote } from '../calc.js';
 import { exportYear } from '../export.js';
+import { teamEventUrl, teamTarget } from '../team.js';
 
 const charts = [];
 let lastYear = null;
@@ -145,7 +146,6 @@ async function load() {
 }
 
 // Events from the team app: the next 60 days, expected revenue and deposits still to come in
-const TEAM_EVENT = (id) => `https://joost1305.github.io/wintertuin-staff-app/#/events/${id}`;
 async function eventsAhead() {
   const box = document.getElementById('events-card');
   if (!box) return;
@@ -160,7 +160,7 @@ async function eventsAhead() {
     const ex = (e) => (e.expected_revenue == null ? 0 : e.prices_incl_vat ? Number(e.expected_revenue) / 1.09 : Number(e.expected_revenue));
     const conf = rows.filter((e) => e.status === 'confirmed'); const opt = rows.filter((e) => e.status === 'option');
     const sum = (a) => a.reduce((x, e) => x + ex(e), 0);
-    const link = (e) => `<a href="${TEAM_EVENT(e.id)}" target="wintertuin-team">${esc(e.title)}</a>`;
+    const link = (e) => `<a href="${teamEventUrl(e.id)}" ${teamTarget()}>${esc(e.title)}</a>`;
     box.innerHTML = `<h2>${t('events_ahead')}</h2>
       <div class="grid grid-kpi" style="margin-bottom:12px">
         <div class="kpi"><div class="label">${t('events_confirmed')}</div><div class="value">${conf.length}</div><div class="tiny muted">${fmt.money(sum(conf))} ${t('excl_vat_est')}</div></div>

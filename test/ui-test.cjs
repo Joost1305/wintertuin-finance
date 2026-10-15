@@ -126,6 +126,10 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.waitForSelector('#compare table');
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx');
       await q.screenshot({ path: `${OUT}/08-month.png`, fullPage: true }); });
+    await step('calendar: events from the team app link to their BEO, the automatic note is replaced', async () => {
+      await q.goto(BASE + '#/calendar'); await q.waitForSelector('.cal-grid');
+      const href = await q.getAttribute('.cal-ev.ev-confirmed', 'href'); if (!/wintertuin-staff-app\/#\/events\/ev1$/.test(href)) throw new Error('link ' + href);
+      if (!(await q.$('.cal-ev.ev-option'))) throw new Error('option not shown'); });
     await step('dashboard: every KPI tile has an (i) explaining the sum with real figures', async () => {
       await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#c-rev');
       const n = (await q.$$('.grid-kpi [data-info]')).length; if (n !== 8) throw new Error('info buttons: ' + n);

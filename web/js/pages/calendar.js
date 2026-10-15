@@ -6,6 +6,7 @@ import { t } from '../i18n.js';
 import { sb, daysInRange, reportDays, ensureWeather } from '../data.js';
 import { dayStatus, closureNote } from '../calc.js';
 import { weatherIcon } from '../weather.js';
+import { teamEventUrl, teamTarget } from '../team.js';
 
 let cur;
 
@@ -39,14 +40,20 @@ async function draw() {
   const nDays = new Date(cur.y, cur.m, 0).getDate();
   const last = `${cur.y}-${pad(cur.m)}-${pad(nDays)}`;
   const today = todayIso();
-  const [days, report, weather, worked] = await Promise.all([
+  const [days, report, weather, worked, evs] = await Promise.all([
     daysInRange(state.rest.id, first, last),
     reportDays(state.rest.id, first, last),
     ensureWeather(state.rest, first, last),
     // Who worked (roster or clock-in in the team app). If that cannot be read, fall back to the opening hours.
     sb.rpc('fin_worked_days', { p_rest: state.rest.id, p_from: first, p_to: last })
       .then(({ data, error }) => (error ? null : new Set((data || []).map((r) => r.day)))).catch(() => null),
+    // Events from the team app (confirmed and options), each linking to its BEO
+    sb.rpc('fin_events_overview', { p_rest: state.rest.id, p_from: first, p_to: last })
+      .then(({ data, error }) => (error ? [] : data || [])).catch(() => []),
   ]);
+  const evByDay = {}; evs.filter((e) => e.status === 'confirmed' || e.status === 'option').forEach((e) => { (evByDay[e.event_date] = evByDay[e.event_date] || []).push(e); });
+  const tgt = teamTarget();
+  const evLinks = (iso) => (evByDay[iso] || []).map((e) => `<a class="cal-ev ev-${esc(e.status)}" href="${teamEventUrl(e.id)}" ${tgt} title="${esc(e.title)} · ${t('evs_' + e.status)}"><span class="g">${e.guests ? `${e.guests}p` : '&#9733;'}</span><span class="t">${esc(e.title)}</span></a>`).join('');
   const byDay = Object.fromEntries(days.map((d) => [d.day, d]));
   const revByDay = Object.fromEntries(report.map((r) => [r.day, Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other)]));
   const wByDay = Object.fromEntries(weather.map((w) => [w.day, w]));
@@ -60,22 +67,24 @@ async function draw() {
     if (counts[st] != null) counts[st]++;
     const w = wByDay[iso];
     const rev = revByDay[iso];
-    const note = closureNote(iso, state.meta);
+    const rawNote = closureNote(iso, state.meta);
+    const note = rawNote && /^Event:/.test(rawNote) && evByDay[iso] ? '' : rawNote; // the event itself is shown as a link instead
     const cls = `${st === 'today' ? 'today' : st === 'quiet' ? 'closed quiet' : st}${iso === today ? ' today' : ''}`;
     const clickable = iso <= today;
     const openNow = isOpen(iso, state.meta);
     const toggle = perm.settings() ? `<button type="button" class="cal-toggle ${openNow ? 'is-open' : 'is-closed'}" data-toggle="${iso}"
       title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>
-      <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(note ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(note ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>` : '';
+      <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(rawNote ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(rawNote ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>` : '';
     html += `<div class="cal-day ${cls}" ${clickable ? `data-day="${iso}" role="button" tabindex="0"` : 'aria-disabled="true"'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
       <span class="d">${d}<span>${st === 'complete' ? '&#10003;' : ''}</span></span>
       <span class="w">${w ? `${weatherIcon(w.weather_code)} <span class="t">${fmt.num(Number(w.tmax), 0)}&deg;</span>` : ''}</span>
-      ${note ? `<span class="n">${esc(note)}</span>` : ''}
+      ${note ? `<span class="n">${esc(note)}</span>` : ''}${evByDay[iso] ? `<span class="cal-evs">${evLinks(iso)}</span>` : ''}
       <span class="r">${rev ? fmt.money(rev) : ''}</span>${toggle ? `<span class="cal-tools">${toggle}</span>` : ''}</div>`;
   }
   $('#cal').innerHTML = `<div class="cal-grid">${html}</div>`;
+  $$('.cal-ev').forEach((a) => a.addEventListener('click', (e) => e.stopPropagation()));
   $$('[data-day]').forEach((b) => {
-    b.onclick = () => { location.hash = `#/today/${b.dataset.day}`; };
+    b.onclick = (e) => { if (e.target.closest('.cal-ev')) return; location.hash = `#/today/${b.dataset.day}`; };
     b.onkeydown = (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); b.click(); } };
   });
   // Managers: open or close a day with one click (same switch as in the team app roster)

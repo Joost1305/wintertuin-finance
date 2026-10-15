@@ -5,6 +5,7 @@ import { state, perm, app, esc, fmt, toast, toastError, todayIso, addDaysIso, $,
 import { t } from '../i18n.js';
 import { sb, check, getDay, ensureDay, ensureWeather, remove } from '../data.js';
 import { isOpen, closureNote } from '../calc.js';
+import { teamEventUrl, teamTarget } from '../team.js';
 
 const STEPS = ['covers', 'revenue', 'purchases', 'hours', 'done'];
 const LS_VAT = 'wtfin_vatmode';
@@ -107,7 +108,7 @@ function draw() {
       <button type="button" class="chip ${s.date === yesterday ? 'on' : ''}" data-date="${yesterday}">${t('yesterday')}</button>
       ${perm.reports() ? `<input type="date" id="pick-date" value="${s.date}" max="${s.today}" style="width:auto">` : ''}
     </div>
-    ${s.events.length ? s.events.map((e) => `<div class="event-today">&#127881; <div><strong>${t(isToday ? 'event_today' : 'event_on_day')}: ${esc(e.title)}</strong>
+    ${s.events.length ? s.events.map((e) => `<div class="event-today">&#127881; <div><strong>${t(isToday ? 'event_today' : 'event_on_day')}: <a href="${teamEventUrl(e.id)}" ${teamTarget()}>${esc(e.title)}</a></strong>
       <div class="small">${e.start_time ? `${esc(String(e.start_time).slice(0, 5))} · ` : ''}${e.guests ? `${e.guests} ${t('guests')}` : ''}${e.expected_revenue != null ? ` · ${t('event_agreed')} ${fmt.money(e.expected_revenue)} ${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}` : ''}</div>
       <div class="tiny muted">${t('event_today_hint')}</div></div></div>`).join('')
     : closed ? `<div class="note" style="margin:-4px 0 14px">${t('closed_day_note')}${note ? ` (${esc(note)})` : ''}</div>` : ''}

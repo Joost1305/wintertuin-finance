@@ -515,3 +515,13 @@ tr.sc-current td { background: var(--primary-soft); }
 .order-move { display: inline-flex; gap: 3px; }
 .order-move button { min-height: 0; padding: 2px 7px; font-size: .7rem; border-radius: 6px; }
 .order-move button:disabled { opacity: .3; }
+/* calendar: events from the team app, each a link to its BEO */
+.cal-evs { display: flex; flex-direction: column; gap: 2px; margin-top: 2px; min-width: 0; }
+.cal-ev { display: flex; gap: 4px; align-items: baseline; font-size: .66rem; font-weight: 650; line-height: 1.25; padding: 1px 5px; border-radius: 5px; text-decoration: none; min-width: 0; }
+.cal-ev .g { flex: none; font-variant-numeric: tabular-nums; }
+.cal-ev .t { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.cal-ev.ev-confirmed { background: #E4F0E6; color: #2f6b3c; }
+.cal-ev.ev-option { background: #FBF0D9; color: #8a5f1a; border: 1px dashed #D99A2B; }
+.cal-ev:hover { filter: brightness(.95); }
+@media (max-width: 820px) { .cal-ev { font-size: .6rem; padding: 1px 3px; justify-content: center; } .cal-ev .t { display: none; } }
+@media print { .cal-ev { background: none !important; border: 0 !important; color: #000 !important; padding: 0; } }
