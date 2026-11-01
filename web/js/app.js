@@ -59,7 +59,7 @@ async function ensureSession() {
 
 function renderNoAccess() {
   $('#topbar').hidden = true;
-  app().innerHTML = `<div class="card" style="max-width:460px;margin:10vh auto;text-align:center"><img src="img/icon.svg" width="48" height="48" alt="">
+  app().innerHTML = `<div class="card" style="max-width:460px;margin:10vh auto;text-align:center"><img src="img/logo.png" width="96" height="70" alt="Wintertuin">
     <h1 style="margin-top:10px">${t('no_access_title')}</h1><p class="muted">${t('no_access')}</p>
     <div style="display:flex;gap:8px;justify-content:center;flex-wrap:wrap"><a class="btn btn-primary" href="https://joost1305.github.io/wintertuin-staff-app/">${t('to_staff_app')}</a>
     <a class="btn" href="#/logout">${t('nav_logout')}</a></div></div>`;
