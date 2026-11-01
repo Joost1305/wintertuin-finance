@@ -197,6 +197,7 @@ async function route() {
 }
 
 window.addEventListener('hashchange', route);
+window.addEventListener('wt:touchnav', () => { if (state.me) renderShell(); });
 window.addEventListener('wt:lang', () => route());
 // Signed out in the other Wintertuin app (same login): follow along
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_OUT' && state.me) { state.me = null; location.hash = '#/login'; } });
