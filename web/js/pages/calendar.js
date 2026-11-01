@@ -16,11 +16,11 @@ export async function renderCalendar(args = []) {
   cur = m ? { y: Number(m[1]), m: Number(m[2]) } : { y: Number(now.slice(0, 4)), m: Number(now.slice(5, 7)) };
   app().innerHTML = `<div id="ph"></div>
     <div class="page-head"><h1>${t('nav_calendar')}</h1>
-      <div class="page-actions no-print"><button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button></div></div>
+      <div class="page-actions no-print"><button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')}</button></div></div>
     <div class="card"><div class="cal-head">
-      <button type="button" class="btn-sm" id="prev" aria-label="${t('prev_month')}">&#8249;</button>
+      <button type="button" class="btn-sm" id="prev" aria-label="${t('prev_month')}"><i class="ic ic-prev" aria-hidden="true"></i></button>
       <h2>${esc(fmt.month(cur.y, cur.m))}</h2>
-      <button type="button" class="btn-sm" id="next" aria-label="${t('next_month')}">&#8250;</button></div>
+      <button type="button" class="btn-sm" id="next" aria-label="${t('next_month')}"><i class="ic ic-next" aria-hidden="true"></i></button></div>
       <div id="cal"><div class="empty"><span class="spinner"></span></div></div>
       <div class="cal-legend"><span><i class="complete"></i>${t('st_complete')}</span><span><i class="draft"></i>${t('st_draft')}</span>
         <span><i class="missing"></i>${t('st_missing')}</span><span><i class="closed"></i>${t('st_closed_or_quiet')}</span></div>
@@ -74,7 +74,7 @@ async function draw() {
     const openNow = isOpen(iso, state.meta);
     const toggle = perm.settings() ? `<button type="button" class="cal-toggle ${openNow ? 'is-open' : 'is-closed'}" data-toggle="${iso}"
       title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>
-      <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(rawNote ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(rawNote ? 'day_note_edit' : 'day_note_add')}">&#9998;</button>` : '';
+      <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(rawNote ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(rawNote ? 'day_note_edit' : 'day_note_add')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>` : '';
     html += `<div class="cal-day ${cls}" ${clickable ? `data-day="${iso}" role="button" tabindex="0"` : 'aria-disabled="true"'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
       <span class="d">${d}<span>${st === 'complete' ? '&#10003;' : ''}</span></span>
       <span class="w">${w ? `${weatherIcon(w.weather_code)} <span class="t">${fmt.num(Number(w.tmax), 0)}&deg;</span>` : ''}</span>

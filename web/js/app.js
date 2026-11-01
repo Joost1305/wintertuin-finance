@@ -1,6 +1,6 @@
 // App shell and router (hash based, no build step). Same structure as WASTE log.
 import { state, perm, $, esc, app, toastError, renderLangToggle, savedRestId, saveRestId, refreshMeta, closeModal , employeeView, renderEmployeeBanner } from './core.js';
-import { t, setLang } from './i18n.js';
+import { t, setLang, lang } from './i18n.js';
 import { sb, loadMe, loadRestaurants, signOut } from './data.js';
 import { BUILD } from './config.js';
 import { renderLogin } from './pages/login.js';
@@ -11,6 +11,7 @@ import { renderMonth } from './pages/month.js';
 import { renderDashboard } from './pages/dashboard.js';
 import { renderSettings } from './pages/settings.js';
 import { orderPaths } from './nav.js';
+import { initPinLock, needsUnlock, showUnlock, shouldOfferSetup, offerSetup, markActive } from './pinlock.js';
 
 console.log(`Wintertuin Finance, build ${BUILD}`);
 // One tab per app: the switch button in the other app targets this name and reuses this tab
@@ -20,12 +21,12 @@ const RANK = { staff: 1, manager: 2, org_admin: 3, super_admin: 4 };
 window.addEventListener('nav-order-changed', () => renderShell());
 
 const routes = [
-  { path: 'today', render: renderToday, nav: 'nav_today', show: () => true },
-  { path: 'calendar', render: renderCalendar, nav: 'nav_calendar', show: perm.reports },
-  { path: 'month', render: renderMonth, nav: 'nav_month', show: perm.reports },
-  { path: 'dashboard', render: renderDashboard, nav: 'nav_dashboard', show: perm.reports },
+  { icon: 'receipt', path: 'today', render: renderToday, nav: 'nav_today', show: () => true },
+  { icon: 'calendar', path: 'calendar', render: renderCalendar, nav: 'nav_calendar', show: perm.reports },
+  { icon: 'roster', path: 'month', render: renderMonth, nav: 'nav_month', show: perm.reports },
+  { icon: 'chart', path: 'dashboard', render: renderDashboard, nav: 'nav_dashboard', show: perm.reports },
   { path: 'vat', render: (args) => { location.replace(`#/settings/vatreport${args[0] ? `/${args[0]}` : ''}`); }, nav: null, show: perm.reports },
-  { path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
+  { icon: 'settings', path: 'settings', render: renderSettings, nav: 'nav_settings', show: perm.settings },
   { path: 'password', render: () => renderSetPassword(() => { location.hash = `#/${homePath()}`; }), nav: null, show: () => true },
 ];
 // Start page: the first item of the top menu in the order set under Settings (Today when nothing is set)
@@ -64,16 +65,37 @@ function renderNoAccess() {
     <a class="btn" href="#/logout">${t('nav_logout')}</a></div></div>`;
 }
 
+// Phone: the main pages as tabs at the bottom, More opens the rest (settings, password, sign out)
+function renderTabbar(current, sorted) {
+  let bar = document.getElementById('tabbar');
+  if (!bar) { bar = document.createElement('nav'); bar.id = 'tabbar'; bar.className = 'tabbar'; bar.setAttribute('aria-label', 'Tabs'); document.body.appendChild(bar); }
+  bar.hidden = false;
+  const tabs = sorted.filter((r) => r.path !== 'settings').slice(0, 4);
+  const inTabs = tabs.some((r) => r.path === current);
+  bar.innerHTML = tabs.map((r) => `<a href="#/${r.path}" class="${current === r.path ? 'on' : ''}"><i class="ic ic-${r.icon}" aria-hidden="true"></i>${t(r.nav)}</a>`).join('') +
+    `<button type="button" id="tab-more" class="${inTabs ? '' : 'on'}" aria-expanded="false"><i class="ic ic-more" aria-hidden="true"></i>${t('nav_more')}</button>`;
+  const nav = $('#nav');
+  const close = () => { nav.classList.remove('open'); document.querySelectorAll('.more-scrim').forEach((x) => x.remove()); $('#tab-more').setAttribute('aria-expanded', 'false'); };
+  $('#tab-more').onclick = () => {
+    if (nav.classList.contains('open')) return close();
+    nav.classList.add('open');
+    const scrim = document.createElement('div'); scrim.className = 'more-scrim'; scrim.onclick = close; document.body.appendChild(scrim);
+    $('#tab-more').setAttribute('aria-expanded', 'true');
+  };
+  nav.querySelectorAll('a').forEach((a) => a.addEventListener('click', close));
+}
+
 function renderShell() {
   const top = $('#topbar');
-  if (!state.me) { top.hidden = true; renderEmployeeBanner(false); return; }
+  const bar = document.getElementById('tabbar');
+  if (!state.me) { top.hidden = true; if (bar) bar.hidden = true; renderEmployeeBanner(false); return; }
   top.hidden = false;
   const current = location.hash.replace(/^#\//, '').split('/')[0] || homePath();
   const nav = $('#nav');
   const visible = routes.filter((r) => r.nav && r.show());
   const sorted = orderPaths(visible.map((r) => r.path), state.rest && state.rest.nav_order).map((p) => visible.find((r) => r.path === p));
   nav.innerHTML = sorted.map((r) =>
-    `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}">${t(r.nav)}</a>`).join('') +
+    `<a href="#/${r.path}" class="${current === r.path ? 'active' : ''}"><i class="ic ic-${r.icon} nav-ic" aria-hidden="true"></i>${t(r.nav)}</a>`).join('') +
     // Managers and admins change their password under Settings; staff (no Settings) keep it in the menu
     (perm.settings() ? '' : `<a href="#/password" class="${current === 'password' ? 'active' : ''}">${t('nav_password')}</a>`) +
     `<a href="#/logout">${t('nav_logout')}</a>`;
@@ -87,6 +109,7 @@ function renderShell() {
   nav.classList.remove('open');
   $('#menu-toggle').onclick = () => nav.classList.toggle('open');
   renderLangToggle($('#lang-toggle'));
+  renderTabbar(current, sorted);
   const sw = $('#rest-switch');
   if (state.restaurants.length > 1) {
     sw.hidden = false;
@@ -108,6 +131,23 @@ const authLink = (() => {
 })();
 
 let choosingPassword = false; // true while the reset-link screen is open
+initPinLock({ sb, lang });
+const pinUser = () => ({ id: state.me.user_id || state.me.id, full_name: state.me.full_name });
+// Quick sign-in: the PIN lock in front of the session, and the offer to choose a PIN after the password
+async function pinGate() {
+  if (!state.me || !needsUnlock(pinUser().id)) return true;
+  document.body.classList.add('locked');
+  const ok = await showUnlock(pinUser());
+  document.body.classList.remove('locked');
+  if (!ok) { location.hash = '#/logout'; return false; }
+  return true;
+}
+async function afterPasswordLogin() {
+  markActive();
+  if (state.me && shouldOfferSetup(pinUser().id)) await offerSetup(pinUser());
+}
+window.addEventListener('wt:pincheck', () => { if (state.me && needsUnlock(pinUser().id)) route(); });
+
 async function route() {
   closeModal(); // a popup never stays open on another page
   // The auth library clears the link from the address bar, which fires a page change.
@@ -139,15 +179,17 @@ async function route() {
     state.me = null;
     renderShell();
     return renderLogin(async () => {
-      if (await ensureSession()) location.hash = `#/${homePath()}`;
+      if (await ensureSession()) { await afterPasswordLogin(); location.hash = `#/${homePath()}`; }
       else if (state.noAccess) renderNoAccess();
     });
   }
   state.noAccess = false;
   if (!(await ensureSession())) { if (state.noAccess) return renderNoAccess(); location.hash = '#/login'; return; }
+  if (!(await pinGate())) return;
   if (!path || path === 'home') { history.replaceState(null, '', `${location.pathname}${location.search}#/${homePath()}`); return route(); }
   const r = routes.find((x) => x.path === path && x.show());
   if (!r) { location.hash = `#/${homePath()}`; return; }
+  document.querySelectorAll('.more-scrim').forEach((x) => x.remove());
   renderShell();
   app().className = 'app';
   window.scrollTo(0, 0);

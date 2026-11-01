@@ -14,7 +14,7 @@ async function session(browser, role, viewport) {
   const errors = [];
   page.on('pageerror', (e) => errors.push('pageerror: ' + e.message));
   page.on('console', (m) => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
-  await page.addInitScript((r) => { window.__MOCK_ROLE = r; }, role);
+  await page.addInitScript((r) => { window.__MOCK_ROLE = r; try { window.__NO_PINLOCK = !localStorage.getItem('test_pin'); } catch (e) { window.__NO_PINLOCK = true; } }, role);
   await page.route('**/vendor/supabase.js', (r) => r.fulfill({ contentType: 'application/javascript', body: MOCK }));
   await page.route(/open-meteo\.com/, (r) => {
     const u = new URL(r.request().url()); const s = u.searchParams.get('start_date'); const e = u.searchParams.get('end_date');
@@ -136,6 +136,8 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx'); });
     await step('month report with inventory count', async () => {
       await q.goto(BASE + '#/month'); await q.waitForSelector('#inv-form');
+      // an empty month shows only the empty state and the stock count; the mock history may sit in last month
+      if (await q.$('.empty-state')) { if (await q.$('#compare')) throw new Error('empty month shows the full report'); await q.click('#prev'); await q.waitForTimeout(800); await q.waitForSelector('#compare'); }
       await q.fill('[name=food_begin]', '1000'); await q.fill('[name=food_end]', '800'); await q.click('#inv-form button[type=submit]');
       await q.waitForTimeout(500); await q.waitForSelector('#inv-form');
       await q.waitForSelector('#compare table');

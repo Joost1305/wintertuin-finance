@@ -4,6 +4,12 @@ export const LANGS = { en: 'English', nl: 'Nederlands' };
 
 const dict = {
   en: {
+    nav_more: 'More', other_day: 'Other day', covers_avg_line: '{n} covers, {a} per cover', no_food_purchases: 'No food purchases entered yet', no_food_sales: 'No food sales yet',
+    no_hours_yet: 'No hours entered yet', no_data_yet: 'Not enough figures yet', no_bev_purchases: 'No drink purchases entered yet', no_bev_sales: 'No drink sales yet',
+    dash_ahead: 'The coming days', dash_trend: 'Month by month', dash_money: 'Costs, break-even and budget', dashed_is_target: 'Dashed lines are the targets.',
+    nothing_entered: 'Nothing entered', budget_per_month: 'Budget {b} per month', month_empty_title: 'Nothing entered for {m} yet',
+    month_empty_text: 'Days closed in Daily closing show up here. You can fill in the stock count already.', open_today: 'Open Daily closing',
+    status_complete: 'Closed', status_partly: 'Partly entered', status_missing: 'Not entered',
     set_system: "System check",
     sc_title: "System check",
     sc_sub: "Every morning at about 06:25 both apps are tested before the day starts. Green works, orange is worth a look, red is broken; GitHub then e-mails you.",
@@ -216,6 +222,12 @@ const dict = {
     tbl_opening_hours: 'Opening hours', tbl_closures: 'Closed day', tbl_app_users: 'User', tbl_restaurants: 'Restaurant', tbl_vat_rates: 'VAT rate',
   },
   nl: {
+    nav_more: 'Meer', other_day: 'Andere dag', covers_avg_line: '{n} gasten, {a} per gast', no_food_purchases: 'Nog geen inkoop eten ingevoerd', no_food_sales: 'Nog geen omzet eten',
+    no_hours_yet: 'Nog geen uren ingevoerd', no_data_yet: 'Nog te weinig cijfers', no_bev_purchases: 'Nog geen inkoop dranken ingevoerd', no_bev_sales: 'Nog geen omzet dranken',
+    dash_ahead: 'De komende dagen', dash_trend: 'Per maand', dash_money: 'Kosten, break-even en budget', dashed_is_target: 'De stippellijnen zijn de doelen.',
+    nothing_entered: 'Niets ingevoerd', budget_per_month: 'Budget {b} per maand', month_empty_title: 'Nog niets ingevoerd voor {m}',
+    month_empty_text: 'Dagen die je afsluit in Dagafsluiting komen hier. De voorraadtelling kun je al invullen.', open_today: 'Open Dagafsluiting',
+    status_complete: 'Afgesloten', status_partly: 'Deels ingevoerd', status_missing: 'Niet ingevoerd',
     set_system: "Systeemcheck",
     sc_title: "Systeemcheck",
     sc_sub: "Elke ochtend rond 06:25 worden beide apps getest voordat de dag begint. Groen werkt, oranje is het bekijken waard, rood is kapot; GitHub mailt je dan.",

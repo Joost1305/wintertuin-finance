@@ -16,9 +16,9 @@ export async function renderVat(args = [], el = app()) {
   el.innerHTML = `<div id="ph"></div>
     <div class="page-head"><div><h2 style="margin:0">${t('set_vat_report')}</h2><div class="muted small">${t('vat_sub')}</div></div>
       <div class="page-actions no-print">
-        <div class="month-nav"><button type="button" class="btn-sm" id="prev">&#8249;</button><strong>${label}</strong><button type="button" class="btn-sm" id="next">&#8250;</button></div>
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
-        <button type="button" class="btn-sm" id="xlsx">&#11015; ${t('export_xlsx')}</button></div></div>
+        <div class="month-nav"><button type="button" class="btn-sm" id="prev"><i class="ic ic-prev" aria-hidden="true"></i></button><strong>${label}</strong><button type="button" class="btn-sm" id="next"><i class="ic ic-next" aria-hidden="true"></i></button></div>
+        <button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')}</button>
+        <button type="button" class="btn-sm" id="xlsx"><i class="ic ic-download" aria-hidden="true"></i> ${t('export_xlsx')}</button></div></div>
     <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
   $('#ph').innerHTML = printHeader(t('nav_vat'), label);
   const go = (n) => { let y = q.y; let qq = q.q + n; if (qq < 1) { qq = 4; y--; } if (qq > 4) { qq = 1; y++; } location.hash = `#/settings/vatreport/${y}-Q${qq}`; };

@@ -17,10 +17,10 @@ export async function renderMonth(args = []) {
   app().innerHTML = `<div id="ph"></div>
     <div class="page-head"><div><h1>${t('nav_month')}</h1><div class="muted small">${t('all_excl_vat')}</div></div>
       <div class="page-actions no-print">
-        <div class="month-nav"><button type="button" class="btn-sm" id="prev">&#8249;</button><strong>${esc(fmt.month(cur.y, cur.m))}</strong>
-        <button type="button" class="btn-sm" id="next">&#8250;</button></div>
-        <button type="button" class="btn-sm" id="print">&#128424; ${t('print')}</button>
-        <button type="button" class="btn-sm" id="xlsx">&#11015; ${t('export_xlsx')}</button></div></div>
+        <div class="month-nav"><button type="button" class="btn-sm" id="prev"><i class="ic ic-prev" aria-hidden="true"></i></button><strong>${esc(fmt.month(cur.y, cur.m))}</strong>
+        <button type="button" class="btn-sm" id="next"><i class="ic ic-next" aria-hidden="true"></i></button></div>
+        <button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')}</button>
+        <button type="button" class="btn-sm" id="xlsx"><i class="ic ic-download" aria-hidden="true"></i> ${t('export_xlsx')}</button></div></div>
     <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
   $('#ph').innerHTML = printHeader(t('nav_month'), fmt.month(cur.y, cur.m));
   const shift = (n) => { let y = cur.y; let mm = cur.m + n; if (mm < 1) { mm = 12; y--; } if (mm > 12) { mm = 1; y++; } location.hash = `#/month/${y}-${pad(mm)}`; };
@@ -82,8 +82,23 @@ function draw(rows, inv, weather) {
   const rainDays = weather.filter((w) => Number(w.precip_mm) >= 1).length;
   const avgT = weather.length ? weather.reduce((a, w) => a + Number(w.tmax), 0) / weather.length : null;
 
+  const invCard = `<div class="card inv-box"><h2>${t('inventory_title')}</h2><p class="small muted" style="margin-top:-6px">${t('inventory_lead')}</p>
+          <form id="inv-form"><div class="field-row">
+            ${['food_begin', 'bev_begin', 'food_end', 'bev_end'].map((f) => `<div class="field"><label>${t('inv_' + f)}</label>
+              <div class="money-in"><input name="${f}" inputmode="decimal" value="${inv.cur && inv.cur[f] != null ? String(inv.cur[f]).replace('.', ',') : ''}"
+                placeholder="${f.endsWith('begin') && counts[f] != null ? String(counts[f]).replace('.', ',') : ''}"></div>
+              ${f.endsWith('begin') && inv.prev && (!inv.cur || inv.cur[f] == null) && counts[f] != null ? `<div class="hint">${t('inv_from_prev')}</div>` : ''}</div>`).join('')}
+          </div><button type="submit" class="btn-primary">${t('save')}</button></form></div>`;
+  // An empty month: say so once, offer the way in, keep only the stock count (that can be filled in ahead)
+  if (s.days === 0) {
+    $('#body').innerHTML = `<div class="grid grid-2"><div class="card empty-state"><div class="pane"></div>
+        <h2>${t('month_empty_title', { m: esc(fmt.month(cur.y, cur.m)) })}</h2><p>${t('month_empty_text')}</p>
+        <a class="btn btn-primary" href="#/today">${t('open_today')}</a></div>
+      <div>${invCard}</div></div>`;
+    bindInventory();
+    return;
+  }
   $('#body').innerHTML = `
-    ${s.days === 0 ? `<div class="card empty">${t('no_data_month')}</div>` : ''}
     <div class="grid grid-2">
       <div class="card"><h2>${t('month_summary')}</h2>
         <table class="kv">
@@ -109,13 +124,7 @@ function draw(rows, inv, weather) {
         <div class="note">${t('season_note', { s: t('season_' + season) })}</div>
       </div>
       <div>
-        <div class="card inv-box"><h2>${t('inventory_title')}</h2><p class="small muted" style="margin-top:-6px">${t('inventory_lead')}</p>
-          <form id="inv-form"><div class="field-row">
-            ${['food_begin', 'bev_begin', 'food_end', 'bev_end'].map((f) => `<div class="field"><label>${t('inv_' + f)}</label>
-              <div class="money-in"><input name="${f}" inputmode="decimal" value="${inv.cur && inv.cur[f] != null ? String(inv.cur[f]).replace('.', ',') : ''}"
-                placeholder="${f.endsWith('begin') && counts[f] != null ? String(counts[f]).replace('.', ',') : ''}"></div>
-              ${f.endsWith('begin') && inv.prev && (!inv.cur || inv.cur[f] == null) && counts[f] != null ? `<div class="hint">${t('inv_from_prev')}</div>` : ''}</div>`).join('')}
-          </div><button type="submit" class="btn-primary">${t('save')}</button></form></div>
+        ${invCard}
         <div class="card"><h2>${t('nonfood_budget')}</h2>
           <table class="kv">${money(t('cat_non_food'), s.pur_non_food, 'sub')}${money(t('cat_cleaning'), s.pur_cleaning, 'sub')}${money(t('cat_small_inventory'), s.pur_small_inventory, 'sub')}
           <tr class="strong"><td>${btl ? `<span class="tl ${btl}"></span>` : ''}${t('total')}</td><td class="${btl ? 'txt-' + btl : ''}">${fmt.money2(k.nonfood)}</td></tr>
@@ -151,7 +160,8 @@ function draw(rows, inv, weather) {
       </tbody></table></div></div>`;
 
   compare(k);
-  $('#inv-form').onsubmit = async (e) => {
+  bindInventory();
+  function bindInventory() { $('#inv-form').onsubmit = async (e) => {
     e.preventDefault();
     const f = e.target;
     const row = { restaurant_id: state.rest.id, organization_id: state.rest.organization_id, year: cur.y, month: cur.m, updated_at: new Date().toISOString() };
@@ -166,7 +176,7 @@ function draw(rows, inv, weather) {
       toast(t('saved'));
       load();
     } catch (err) { toastError(err); }
-  };
+  }; }
 }
 
 // KPIs of any month, the same way as above (beginning stock falls back to last month's ending stock)

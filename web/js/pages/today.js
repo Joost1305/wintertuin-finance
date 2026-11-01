@@ -106,9 +106,11 @@ function draw() {
     <div class="date-chips">
       <button type="button" class="chip ${isToday ? 'on' : ''}" data-date="${s.today}">${t('today')}</button>
       <button type="button" class="chip ${s.date === yesterday ? 'on' : ''}" data-date="${yesterday}">${t('yesterday')}</button>
-      ${perm.reports() ? `<input type="date" id="pick-date" value="${s.date}" max="${s.today}" style="width:auto">` : ''}
+      ${perm.reports() ? `<label class="chip date-btn ${!isToday && s.date !== yesterday ? 'on' : ''}"><i class="ic ic-calendar" aria-hidden="true"></i>
+        <span>${!isToday && s.date !== yesterday ? esc(fmt.dayShort(s.date)) : t('other_day')}</span>
+        <input type="date" id="pick-date" value="${s.date}" max="${s.today}" aria-label="${t('other_day')}"></label>` : ''}
     </div>
-    ${s.events.length ? s.events.map((e) => `<div class="event-today">&#127881; <div><strong>${t(isToday ? 'event_today' : 'event_on_day')}: <a href="${teamEventUrl(e.id)}" ${teamTarget()}>${esc(e.title)}</a></strong>
+    ${s.events.length ? s.events.map((e) => `<div class="event-today"><i class="ic ic-party" aria-hidden="true"></i> <div><strong>${t(isToday ? 'event_today' : 'event_on_day')}: <a href="${teamEventUrl(e.id)}" ${teamTarget()}>${esc(e.title)}</a></strong>
       <div class="small">${e.start_time ? `${esc(String(e.start_time).slice(0, 5))} · ` : ''}${e.guests ? `${e.guests} ${t('guests')}` : ''}${e.expected_revenue != null ? ` · ${t('event_agreed')} ${fmt.money(e.expected_revenue)} ${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}` : ''}</div>
       <div class="tiny muted">${t('event_today_hint')}</div></div></div>`).join('')
     : closed ? `<div class="note" style="margin:-4px 0 14px">${t('closed_day_note')}${note ? ` (${esc(note)})` : ''}</div>` : ''}
@@ -119,6 +121,7 @@ function draw() {
     <div class="save-state" id="save-state"></div>`;
   $$('[data-date]').forEach((b) => (b.onclick = async () => { if (!(await leavePurchases())) return; await flush(); location.hash = `#/today/${b.dataset.date}`; }));
   const pick = $('#pick-date');
+  if (pick) pick.onclick = () => { try { pick.showPicker(); } catch { /* older browsers open it themselves */ } };
   if (pick) pick.onchange = async () => { if (pick.value) { if (!(await leavePurchases())) { pick.value = s.date; return; } await flush(); location.hash = `#/today/${pick.value}`; } };
   $$('[data-step]').forEach((b) => (b.onclick = () => go(Number(b.dataset.step))));
   drawStep();
@@ -415,7 +418,7 @@ function stepDoneView() {
     ${complete ? `<div class="path-nav single"><button type="button" class="btn-xl" data-goto="0">${t('make_change')}</button></div>`
       : `<div class="path-nav"><button type="button" class="btn-xl" id="back">${t('back')}</button>
          <button type="button" class="btn-primary btn-xl" id="close-day">&#10003; ${t('close_day')}</button></div>`}
-    ${s.day && perm.settings() ? `<div class="del-day"><button type="button" class="btn-ghost btn-danger btn-sm" id="del-day">&#128465; ${t('delete_day')}</button></div>` : ''}`;
+    ${s.day && perm.settings() ? `<div class="del-day"><button type="button" class="btn-ghost btn-danger btn-sm" id="del-day"><i class="ic ic-trash" aria-hidden="true"></i> ${t('delete_day')}</button></div>` : ''}`;
   // Managers: wipe this day completely (covers, revenue, purchases, hours) and start over
   const del = $('#del-day');
   if (del) del.onclick = async () => {

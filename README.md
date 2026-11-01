@@ -26,6 +26,11 @@ Sign in with your own account (you are super admin). Then, under **Settings**:
 - **Users:** add the people who do the daily closing. If they already use the staff app, use the
   same email: they keep their password.
 
+## Look and sign-in
+
+`web/css/theme.css`, `web/fonts/` and `web/js/pinlock.js` are the same files as in the Team app: season colours, Young Serif
+headings, icons and quick sign-in with a PIN (one PIN for both apps on the same device).
+
 ## Every day
 
 Open the app, follow the green bar: covers, revenue, deliveries, hours, close the day.
