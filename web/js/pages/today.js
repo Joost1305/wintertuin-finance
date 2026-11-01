@@ -117,14 +117,25 @@ function draw() {
     <div class="path-label">${t('step_of', { n: s.step + 1, k: t('step_' + STEPS[s.step]) })}</div>
     <section class="card path-step" id="step"></section>
     <div class="save-state" id="save-state"></div>`;
-  $$('[data-date]').forEach((b) => (b.onclick = async () => { await flush(); location.hash = `#/today/${b.dataset.date}`; }));
+  $$('[data-date]').forEach((b) => (b.onclick = async () => { if (!(await leavePurchases())) return; await flush(); location.hash = `#/today/${b.dataset.date}`; }));
   const pick = $('#pick-date');
-  if (pick) pick.onchange = async () => { if (pick.value) { await flush(); location.hash = `#/today/${pick.value}`; } };
+  if (pick) pick.onchange = async () => { if (pick.value) { if (!(await leavePurchases())) { pick.value = s.date; return; } await flush(); location.hash = `#/today/${pick.value}`; } };
   $$('[data-step]').forEach((b) => (b.onclick = () => go(Number(b.dataset.step))));
   drawStep();
 }
 
+// A delivery that was typed but not added with "+ Add" used to vanish on Next. Now it is added on the way out,
+// or, if it cannot be added yet (no category), the step stays open and says why.
+async function leavePurchases() {
+  if (STEPS[s.step] !== 'purchases' || !$('#p-amount')) return true;
+  keepInputs();
+  const v = parseAmount(s.add.amount);
+  if (v == null || v === 0) return true;
+  return addPurchase({ leaving: true });
+}
+
 async function go(i) {
+  if (!(await leavePurchases())) return;
   await flush();
   if (i > s.step && s.lastStep < i && s.day) { s.lastStep = i; patchDay({ last_step: i }).catch(toastError); }
   else if (i > s.step) s.lastStep = Math.max(s.lastStep, i);
@@ -237,10 +248,11 @@ function stepPurchases() {
       <div class="subhead">${t('category')}</div>
       <div class="chips">${cats.map((c) => `<button type="button" class="chip ${a.categoryId === c.id ? 'on' : ''}" data-cat="${c.id}">${esc(nameOf(c))}</button>`).join('')}</div>
       <div class="field-row" style="margin-top:14px">
-        <div><label>${mode === 'inc' ? t('amount_inc') : t('amount_ex')}</label><div class="money-in"><input id="p-amount" inputmode="decimal" value="${esc(a.amount)}" placeholder="0" autocomplete="off"></div></div>
+        <div><label>${mode === 'inc' ? t('amount_inc') : t('amount_ex')}</label><div class="money-in"><input id="p-amount" inputmode="decimal" value="${esc(a.amount)}" placeholder="0" autocomplete="off" enterkeyhint="done"></div></div>
         <div><label>${t('vat')}</label><select id="p-vat">${m.vat.map((v) => `<option value="${v.rate}" ${Number(a.vat ?? (cat ? cat.vat_rate : 0.09)) === Number(v.rate) ? 'selected' : ''}>${esc(v.label)}</option>`).join('')}</select></div>
       </div>
       <div class="field" style="margin-top:10px"><input id="p-note" value="${esc(a.note)}" placeholder="${t('note_optional')}"></div>
+      <div class="pending-line" id="p-pending" hidden>${t('delivery_not_added')}</div>
       <div class="split"><div class="vat-mode" role="group"><button type="button" data-mode="ex" class="${mode === 'ex' ? 'on' : ''}">${t('excl_vat')}</button>
         <button type="button" data-mode="inc" class="${mode === 'inc' ? 'on' : ''}">${t('incl_vat')}</button></div>
         <button type="button" class="btn-primary" id="p-add">+ ${t('add_delivery')}</button></div>
@@ -249,7 +261,10 @@ function stepPurchases() {
   $$('[data-sup]', el).forEach((b) => (b.onclick = () => {
     a.supplierId = b.dataset.sup === 'none' ? 'none' : b.dataset.sup;
     const sup = sups.find((x) => x.id === a.supplierId);
-    if (sup && sup.category_id) { a.categoryId = sup.category_id; a.vat = null; }
+    const remembered = lastCat(a.supplierId);
+    const food = cats.find((c) => c.kind === 'food');
+    const pickCat = (sup && sup.category_id) || (cats.some((c) => c.id === remembered) ? remembered : null) || a.categoryId || (food && food.id);
+    if (pickCat && pickCat !== a.categoryId) { a.categoryId = pickCat; a.vat = null; }
     keepInputs(); stepPurchases(); $('#p-amount').focus();
   }));
   $$('[data-cat]', el).forEach((b) => (b.onclick = () => { a.categoryId = b.dataset.cat; a.vat = null; keepInputs(); stepPurchases(); }));
@@ -260,20 +275,34 @@ function stepPurchases() {
     try { await remove('fin_purchases', b.dataset.del); s.purchases = s.purchases.filter((p) => p.id !== b.dataset.del); stepPurchases(); }
     catch (e) { toastError(e); }
   }));
-  $('#p-add').onclick = addPurchase;
+  $('#p-add').onclick = () => addPurchase();
+  const amt = $('#p-amount');
+  const pending = () => { const v = parseAmount(amt.value); $('#p-pending').hidden = v == null || v === 0; };
+  amt.oninput = pending;
+  amt.onkeydown = (e) => { if (e.key === 'Enter') { e.preventDefault(); addPurchase(); } };
+  pending();
   bindNav();
+}
+const LS_SUPCAT = 'wtfin_supcat';
+function lastCat(supId) { try { return (JSON.parse(localStorage.getItem(LS_SUPCAT) || '{}'))[supId] || null; } catch { return null; } }
+function rememberCat(supId, catId) {
+  if (!supId || supId === 'none') return;
+  try { const m = JSON.parse(localStorage.getItem(LS_SUPCAT) || '{}'); m[supId] = catId; localStorage.setItem(LS_SUPCAT, JSON.stringify(m)); } catch { /* private mode */ }
 }
 function keepInputs() {
   const amt = $('#p-amount'); const note = $('#p-note');
   if (amt) s.add.amount = amt.value;
   if (note) s.add.note = note.value;
 }
-async function addPurchase() {
+async function addPurchase({ leaving = false } = {}) {
   keepInputs();
   const a = s.add;
   const v = parseAmount(a.amount);
-  if (!a.categoryId) return toastError(new Error(t('pick_category')));
-  if (v == null || v === 0) { $('#p-amount').focus(); return toastError(new Error(t('fill_amount'))); }
+  if (!a.categoryId) {
+    const chips = $('.add-box .chips'); if (chips) { chips.classList.add('need'); chips.scrollIntoView({ block: 'center', behavior: 'smooth' }); }
+    toastError(new Error(leaving ? t('pick_category_first') : t('pick_category'))); return false;
+  }
+  if (v == null || v === 0) { $('#p-amount').focus(); toastError(new Error(t('fill_amount'))); return false; }
   const vat = Number($('#p-vat').value);
   const ex = round2(vatMode() === 'inc' ? v / (1 + vat) : v);
   const btn = $('#p-add'); btn.disabled = true;
@@ -284,10 +313,12 @@ async function addPurchase() {
       amount_ex: ex, vat_rate: vat, note: a.note || null, organization_id: state.rest.organization_id, restaurant_id: state.rest.id,
     }).select().single());
     s.purchases.push(row);
+    rememberCat(a.supplierId, a.categoryId);
     s.add = { supplierId: null, categoryId: null, amount: '', vat: null, note: '' };
     toast(t('delivery_added'));
-    stepPurchases();
-  } catch (e) { toastError(e); btn.disabled = false; }
+    if (!leaving) stepPurchases();
+    return true;
+  } catch (e) { toastError(e); btn.disabled = false; return false; }
 }
 
 // ------------------------------------------------------------------ 4. hours

@@ -27,7 +27,7 @@ async function session(browser, role, viewport) {
 const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await fn(); console.log('ok'); };
 
 (async () => {
-  const browser = await chromium.launch();
+  const browser = await chromium.launch({executablePath:process.env.PW_EXE});
   let failed = false;
   try {
     // ---------------- org admin on a phone: login and the full green path
@@ -64,6 +64,19 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await p.waitForFunction(() => document.querySelectorAll('.purchase-list li').length === 2);
       await p.screenshot({ path: `${OUT}/04-purchases.png`, fullPage: true });
       await p.click('#next'); await p.waitForSelector('[data-staff]'); });
+    await step('purchases: a typed delivery is kept when you press Next without Add (bug fix)', async () => {
+      await p.click('[data-step="2"]'); await p.waitForSelector('#p-add');
+      await p.click('[data-sup]'); await p.fill('#p-amount', '45');
+      await p.waitForSelector('#p-pending:not([hidden])');
+      await p.click('#next'); await p.waitForSelector('[data-staff]');
+      const n = await p.evaluate(() => window.__mockdb.fin_purchases.filter((x) => x.amount_ex === 45).length);
+      if (n !== 1) throw new Error('typed delivery lost: ' + n);
+      // amount without a category: stays on the step and asks for one
+      await p.click('[data-step="2"]'); await p.waitForSelector('#p-add');
+      await p.fill('#p-amount', '12');
+      await p.click('#next'); await p.waitForTimeout(400);
+      if (!(await p.$('#p-add'))) throw new Error('left the step with an unsaved delivery');
+      await p.fill('#p-amount', ''); await p.click('#next'); await p.waitForSelector('[data-staff]'); });
     await step('hours: pre-filled from clock-ins, no rates visible, fill two people', async () => {
       if (/€\s?20|20,00/.test(await p.textContent('#step'))) throw new Error('rate visible');
       if ((await p.inputValue('[data-staff] >> nth=0')) !== '7,5') throw new Error('not prefilled: ' + await p.inputValue('[data-staff] >> nth=0'));
@@ -77,7 +90,7 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await step('data saved as expected', async () => {
       const r = await p.evaluate(() => { const db = window.__mockdb; const today = new Date().toLocaleDateString('sv-SE'); const d = db.fin_days.find((x) => x.day === today);
         return { status: d.status, covers: d.covers, rev: db.fin_day_revenue.filter((x) => x.day_id === d.id).map((x) => x.amount_ex).sort(), pur: db.fin_purchases.filter((x) => x.day_id === d.id).map((x) => x.amount_ex).sort(), hrs: db.fin_hours.filter((x) => x.day_id === d.id).length }; });
-      if (r.status !== 'complete' || r.covers !== 42 || JSON.stringify(r.rev) !== '[1000,500]' || JSON.stringify(r.pur) !== '[300,60.5]' || r.hrs !== 2) throw new Error(JSON.stringify(r)); });
+      if (r.status !== 'complete' || r.covers !== 42 || JSON.stringify(r.rev) !== '[1000,500]' || JSON.stringify(r.pur) !== '[300,45,60.5]' || r.hrs !== 2) throw new Error(JSON.stringify(r)); });
     await step('stop halfway keeps a draft', async () => {
       await p.click('.chip >> text=Yesterday'); await p.waitForSelector('#covers');
       await p.fill('#covers', '12'); await p.waitForTimeout(900);
@@ -94,6 +107,8 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
     await q.goto(BASE); await q.fill('[name=email]', 'a@b.c'); await q.fill('[name=password]', 'test'); await q.click('button[type=submit]'); await q.waitForSelector('#covers');
     await step('calendar shows colours and weather', async () => {
       await q.goto(BASE + '#/calendar'); await q.waitForSelector('.cal-grid');
+      // the mock history is the last 9 days: early in a month it sits in the previous month
+      if (!(await q.$('.cal-day.complete'))) { await q.click('#prev'); await q.waitForTimeout(800); }
       if (!(await q.$('.cal-day.complete'))) throw new Error('no green day'); if (!(await q.$('.cal-day.closed'))) throw new Error('no closed day');
       // missing only where people worked (Fri/Sat in the mock); open Sundays without anyone working are quiet
       const miss = await q.$$eval('.cal-day.missing[data-day]', (b) => b.map((x) => new Date(x.dataset.day + 'T12:00:00').getDay()));

@@ -525,3 +525,7 @@ tr.sc-current td { background: var(--primary-soft); }
 .cal-ev:hover { filter: brightness(.95); }
 @media (max-width: 820px) { .cal-ev { font-size: .6rem; padding: 1px 3px; justify-content: center; } .cal-ev .t { display: none; } }
 @media print { .cal-ev { background: none !important; border: 0 !important; color: #000 !important; padding: 0; } }
+
+/* Daily closing: a typed delivery that is not added yet */
+.pending-line { margin-top: 10px; padding: 8px 12px; border-radius: var(--radius-sm); background: var(--accent-soft); color: #7a4422; font-size: .85rem; font-weight: 600; }
+.chips.need { outline: 2px solid var(--bad); outline-offset: 4px; border-radius: 12px; }
