@@ -130,7 +130,8 @@ export function openModal(html, onMount) {
   card.querySelectorAll('[data-close]').forEach((b) => (b.onclick = close));
   if (onMount) onMount(card, close);
   const first = card.querySelector('input, select, textarea');
-  if (first) first.focus();
+  // not on a phone: focusing opens the keyboard and makes iPhone zoom in before you have even read the form
+  if (first && !window.matchMedia('(pointer: coarse)').matches) first.focus();
   return close;
 }
 
