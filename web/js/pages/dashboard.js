@@ -193,12 +193,13 @@ async function eventsAhead() {
         <div class="kpi"><div class="label">${t('events_options')}</div><div class="value">${opt.length}</div><div class="tiny muted">${fmt.money(sum(opt))} ${t('excl_vat_est')}</div></div>
         <div class="kpi"><div class="label">${t('deposits_open')}</div><div class="value ${open.some((d) => d.deposit_due && d.deposit_due < today) ? 'txt-red' : ''}">${fmt.money(open.reduce((a, d) => a + Number(d.deposit), 0))}</div><div class="tiny muted">${t('deposits_n', { n: open.length })}</div></div>
       </div>
-      ${rows.length ? `<div class="table-wrap"><table class="num-table ev-tbl"><thead><tr><th>${t('date')}</th><th>${t('event')}</th><th>${t('status')}</th><th>${t('guests')}</th><th>${t('expected')}</th></tr></thead><tbody>
-        ${rows.map((e) => `<tr><td>${esc(fmt.dayShort(e.event_date))}</td><td>${link(e)}</td><td><span class="badge ${e.status === 'confirmed' ? 'green' : 'amber'}">${t('evs_' + e.status)}</span></td>
-          <td>${e.guests ?? '–'}</td><td>${e.expected_revenue != null ? `${fmt.money(e.expected_revenue)} <span class="tiny muted">${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}</span>` : '–'}</td></tr>`).join('')}</tbody></table></div>`
+      ${rows.length ? `<ul class="ev-list">${rows.map((e) => `<li>
+          <div class="evl-top">${link(e)}<span class="evl-amt">${e.expected_revenue != null ? `${fmt.money(e.expected_revenue)} <span class="tiny muted">${t(e.prices_incl_vat ? 'incl_vat_short' : 'excl_vat_short')}</span>` : '–'}</span></div>
+          <div class="evl-sub">${esc(fmt.dayShort(e.event_date))} · <span class="badge ${e.status === 'confirmed' ? 'green' : 'amber'}">${t('evs_' + e.status)}</span>${e.guests != null ? ` · ${e.guests} ${t('guests').toLowerCase()}` : ''}</div></li>`).join('')}</ul>`
         : `<div class="empty small">${t('events_none')}</div>`}
-      ${open.length ? `<h3 style="margin:16px 0 6px;font-size:.95rem">${t('deposits_open')}</h3><table class="kv">${open.map((d) => `<tr><td>${link(d)} <span class="tiny muted">${esc(fmt.dayShort(d.event_date))}</span></td>
-        <td class="${d.deposit_due && d.deposit_due < today ? 'txt-red' : ''}">${fmt.money2(d.deposit)}${d.deposit_due ? ` · ${t(d.deposit_due < today ? 'deposit_overdue' : 'deposit_due_on', { d: fmt.dayShort(d.deposit_due) })}` : ''}</td></tr>`).join('')}</table>` : ''}
+      ${open.length ? `<h3 style="margin:16px 0 6px;font-size:.95rem">${t('deposits_open')}</h3><ul class="ev-list">${open.map((d) => `<li>
+          <div class="evl-top">${link(d)}<span class="evl-amt">${fmt.money2(d.deposit)}</span></div>
+          <div class="evl-sub">${esc(fmt.dayShort(d.event_date))}${d.deposit_due ? ` · <span class="${d.deposit_due < today ? 'txt-red' : ''}">${t(d.deposit_due < today ? 'deposit_overdue' : 'deposit_due_on', { d: fmt.dayShort(d.deposit_due) })}</span>` : ''}</div></li>`).join('')}</ul>` : ''}
       <div class="tiny muted" style="margin-top:8px">${t('events_vat_note')}</div>`;
   } catch (e) { box.innerHTML = `<h2>${t('events_ahead')}</h2><div class="empty small">${t('events_unavailable')}</div>`; console.warn(e); }
 }

@@ -535,7 +535,7 @@ tr.sc-current td { background: var(--primary-soft); }
    ========================================================================== */
 /* ---------------------------------------------------------------- dashboard */
 .kpi-row-main .kpi { padding: 18px 18px 16px; }
-.kpi-row-main .kpi .value { font-size: 2.1rem; line-height: 1.1; margin: 6px 0 10px; }
+.kpi-row-main .kpi .value { font-size: 1.75rem; line-height: 1.1; margin: 6px 0 10px; }
 .kpi .value { font-variant-numeric: lining-nums tabular-nums; }
 .kpi .value.nodata { color: var(--ink-3); }
 .kpi-row-minor { margin-top: 12px; }
@@ -577,3 +577,28 @@ tr.sc-current td { background: var(--primary-soft); }
   .nav.open a .nav-ic { display: inline-block; width: 20px; height: 20px; color: var(--primary); }
   .nav.open a.active .nav-ic { color: var(--primary-ink); }
 }
+/* Dashboard: events and deposits as a list; the name gets the full width, details on the line below */
+.ev-list { list-style: none; margin: 0; padding: 0; }
+.ev-list li { padding: 10px 0; border-bottom: 1px solid var(--line); }
+.ev-list li:last-child { border-bottom: 0; }
+.evl-top { display: flex; align-items: baseline; gap: 12px; }
+.evl-top a { flex: 1; min-width: 0; font-weight: 600; overflow-wrap: anywhere; }
+.evl-amt { white-space: nowrap; font-variant-numeric: tabular-nums; font-weight: 600; }
+.evl-sub { margin-top: 3px; font-size: .85rem; color: var(--ink-2); }
+.evl-sub .badge { font-size: .72rem; }
+/* Calendar on a phone: open or closed as a small dot, the pencil as a small icon; both fit inside the day */
+@media (max-width: 600px) {
+  .cal-tools { gap: 2px; justify-content: space-between; margin-top: 2px; }
+  .cal-tools .cal-toggle { width: 18px; min-width: 0; min-height: 0; height: 20px; padding: 0; border-radius: 50%; display: grid; place-items: center; flex: none; border: 0; background: transparent; }
+  .cal-toggle .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .cal-toggle::before { content: ''; width: 11px; height: 11px; border-radius: 50%; box-sizing: border-box; }
+  .cal-toggle.is-open::before { background: var(--good); }
+  .cal-toggle.is-closed::before { border: 1.5px solid var(--ink-3); }
+  .cal-tools .cal-note-btn { width: 18px; min-width: 0; height: 20px; min-height: 0; padding: 0; border: 0; display: grid; place-items: center; flex: none; font-size: .62rem; }
+  .cal-note-btn .ic { width: 12px; height: 12px; }
+  .cal-legend { font-size: .78rem; }
+}
+/* Daily closing: Today, Yesterday and Other day on one row */
+.date-chips { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; }
+.date-chips .chip { flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 7px 10px; font-size: .92rem; justify-content: center; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
+.date-chips .chip span { overflow: hidden; text-overflow: ellipsis; }

@@ -73,7 +73,7 @@ async function draw() {
     const clickable = iso <= today;
     const openNow = isOpen(iso, state.meta);
     const toggle = perm.settings() ? `<button type="button" class="cal-toggle ${openNow ? 'is-open' : 'is-closed'}" data-toggle="${iso}"
-      title="${t(openNow ? 'day_click_close' : 'day_click_open')}">${t(openNow ? 'open' : 'closed')}</button>
+      title="${t(openNow ? 'day_click_close' : 'day_click_open')}" aria-label="${t(openNow ? 'day_click_close' : 'day_click_open')}"><span class="tl">${t(openNow ? 'open' : 'closed')}</span></button>
       <button type="button" class="cal-note-btn ${note ? 'has-note' : ''}" data-note="${iso}" title="${t(rawNote ? 'day_note_edit' : 'day_note_add')}" aria-label="${t(rawNote ? 'day_note_edit' : 'day_note_add')}"><i class="ic ic-pencil" aria-hidden="true"></i></button>` : '';
     html += `<div class="cal-day ${cls}" ${clickable ? `data-day="${iso}" role="button" tabindex="0"` : 'aria-disabled="true"'} title="${esc(t('st_' + (st === 'today' ? 'open' : st)))}${note ? ` · ${esc(note)}` : ''}">
       <span class="d">${d}<span>${st === 'complete' ? '&#10003;' : ''}</span></span>

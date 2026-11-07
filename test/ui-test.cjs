@@ -98,6 +98,16 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await p.waitForSelector('[data-stream]'); // resumes at step 2
       const st = await p.evaluate(() => { const d = new Date(); d.setDate(d.getDate() - 1); return window.__mockdb.fin_days.find((x) => x.day === d.toLocaleDateString('sv-SE')).status; });
       if (st !== 'draft') throw new Error(st); });
+    await step('phone: calendar days keep their tools inside; dashboard fits', async () => {
+      await p.goto(BASE + '#/calendar'); await p.waitForSelector('.cal-day .cal-toggle');
+      const over = await p.evaluate(() => [...document.querySelectorAll('.cal-tools')].filter((t) => { const d = t.closest('.cal-day').getBoundingClientRect(); return [...t.children].some((c) => c.getBoundingClientRect().right > d.right + 0.5); }).length);
+      await p.waitForTimeout(500);
+      await p.addStyleTag({ content: '.cal-tools{opacity:1!important}' }); // on a phone the tools always show; this browser hides them until hover
+      await p.screenshot({ path: `${OUT}/07p-calendar-phone.png`, fullPage: true });
+      if (over) throw new Error(over + ' days with tools outside ' + await p.evaluate(() => { const t = document.querySelectorAll('.cal-tools')[10]; const d = t.closest('.cal-day'); return JSON.stringify([d.getBoundingClientRect(), t.getBoundingClientRect(), [...t.children].map((c) => [c.className, c.getBoundingClientRect().left, c.getBoundingClientRect().right, getComputedStyle(c).display])]); }));
+      await p.goto(BASE + '#/dashboard'); await p.waitForTimeout(1200);
+      await p.screenshot({ path: `${OUT}/09p-dashboard-phone.png`, fullPage: true });
+      if (await p.evaluate(() => document.documentElement.scrollWidth > window.innerWidth + 1)) throw new Error('page scrolls sideways'); });
     await A.ctx.close();
     if (A.errors.length) { failed = true; console.log('ERRORS (phone):', A.errors); }
 
@@ -162,7 +172,7 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error(dl.suggestedFilename());
       await q.screenshot({ path: `${OUT}/09-dashboard.png`, fullPage: true }); });
     await step('dashboard: events ahead with expected revenue and overdue deposit', async () => {
-      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#events-card table');
+      await q.goto(BASE + '#/dashboard'); await q.waitForSelector('#events-card .ev-list');
       const txt = await q.textContent('#events-card'); if (!/Wedding Jansen/.test(txt) || !/Company dinner/.test(txt) || !/was due/.test(txt)) throw new Error(txt);
       if (!(await q.$('#events-card a[target=wintertuin-team]'))) throw new Error('no link to team app'); });
     await step('settings: import team app accounts', async () => {
