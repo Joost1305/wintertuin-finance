@@ -1,5 +1,5 @@
 // Month report: the Excel month tab. Totals, inventory counts, COGS and all cost percentages.
-import { state, perm, app, esc, fmt, toast, toastError, todayIso, $, nameOf, parseAmount, printHeader, printPage } from '../core.js';
+import { state, perm, app, esc, fmt, toast, toastError, todayIso, addDaysIso, $, nameOf, parseAmount, printHeader, printPage } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays, ensureWeather } from '../data.js';
 import { sumDays, monthKpis, targetFor, traffic, monthSeason } from '../calc.js';
@@ -10,13 +10,21 @@ let cur;
 let lastData = null; // data of the shown month, for the Excel export
 const pad = (n) => String(n).padStart(2, '0');
 
+// Monday of the week of a date, and the ISO week number
+const mondayOf = (iso) => { const d = new Date(iso + 'T12:00:00'); return addDaysIso(iso, -((d.getDay() + 6) % 7)); };
+function weekNo(iso) { const d = new Date(iso + 'T12:00:00'); d.setDate(d.getDate() + 3 - ((d.getDay() + 6) % 7)); const w1 = new Date(d.getFullYear(), 0, 4, 12);
+  return 1 + Math.round(((d - w1) / 864e5 - 3 + ((w1.getDay() + 6) % 7)) / 7); }
+const viewTabs = (on, monthHref, weekHref) => `<div class="seg" role="tablist"><a class="${on === 'month' ? 'on' : ''}" href="${monthHref}" role="tab" aria-selected="${on === 'month'}">${t('view_month')}</a><a class="${on === 'week' ? 'on' : ''}" href="${weekHref}" role="tab" aria-selected="${on === 'week'}">${t('view_week')}</a></div>`;
+
 export async function renderMonth(args = []) {
   const now = todayIso();
+  if (args[0] === 'week') return renderWeek(args[1]);
   const m = /^(\d{4})-(\d{2})$/.exec(args[0] || '');
   cur = m ? { y: Number(m[1]), m: Number(m[2]) } : { y: Number(now.slice(0, 4)), m: Number(now.slice(5, 7)) };
   app().innerHTML = `<div id="ph"></div>
     <div class="page-head"><div><h1>${t('nav_month')}</h1><div class="muted small">${t('all_excl_vat')}</div></div>
       <div class="page-actions no-print">
+        ${viewTabs('month', '#/month', `#/month/week/${mondayOf(cur.y === Number(now.slice(0, 4)) && cur.m === Number(now.slice(5, 7)) ? now : `${cur.y}-${pad(cur.m)}-01`)}`)}
         <div class="month-nav"><button type="button" class="btn-sm" id="prev"><i class="ic ic-prev" aria-hidden="true"></i></button><strong>${esc(fmt.month(cur.y, cur.m))}</strong>
         <button type="button" class="btn-sm" id="next"><i class="ic ic-next" aria-hidden="true"></i></button></div>
         <button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')}</button>
@@ -221,4 +229,99 @@ async function compare(k) {
         <td>${show(ly && ly[key], f)} ${delta(k[key], ly && ly[key], f, upGood)}</td></tr>`).join('')}
       </tbody></table></div><div class="small muted" style="margin-top:6px">${t('compare_note')}</div>`;
   } catch (e) { box.innerHTML = `<h2>${t('compare_title')}</h2><div class="small muted">${esc(e.message)}</div>`; }
+}
+
+// ---------------------------------------------------------------- week view: the same figures for Monday to Sunday
+let wk = null;
+async function renderWeek(arg) {
+  const now = todayIso();
+  const mon = mondayOf(/^\d{4}-\d{2}-\d{2}$/.test(arg || '') ? arg : now);
+  const sun = addDaysIso(mon, 6); const n = weekNo(mon);
+  wk = mon;
+  const label = `${t('week_n', { n })} · ${fmt.dayShort(mon)} – ${fmt.dayShort(sun)}`;
+  app().innerHTML = `<div id="ph"></div>
+    <div class="page-head"><div><h1>${t('nav_month')}</h1><div class="muted small">${t('all_excl_vat')}</div></div>
+      <div class="page-actions no-print">
+        ${viewTabs('week', `#/month/${mon.slice(0, 7)}`, `#/month/week/${mon}`)}
+        <div class="month-nav"><button type="button" class="btn-sm" id="prev" aria-label="${t('prev_week')}"><i class="ic ic-prev" aria-hidden="true"></i></button><strong>${esc(t('week_n', { n }))}</strong>
+        <button type="button" class="btn-sm" id="next"><i class="ic ic-next" aria-hidden="true"></i></button></div>
+        <button type="button" class="btn-sm" id="print"><i class="ic ic-printer" aria-hidden="true"></i> ${t('print')}</button></div></div>
+    <div class="muted small" style="margin:-6px 0 12px">${esc(fmt.dayShort(mon))} – ${esc(fmt.dayShort(sun))}</div>
+    <div id="body"><div class="card empty"><span class="spinner"></span></div></div>`;
+  $('#ph').innerHTML = printHeader(t('nav_month'), label);
+  $('#prev').onclick = () => { location.hash = `#/month/week/${addDaysIso(mon, -7)}`; };
+  $('#next').onclick = () => { location.hash = `#/month/week/${addDaysIso(mon, 7)}`; };
+  $('#print').onclick = printPage;
+  try {
+    const lyMon = mondayOf(addDaysIso(mon, -364)); // same weekday, 52 weeks back
+    const [rows, weather, prevRows, lyRows] = await Promise.all([
+      reportDays(state.rest.id, mon, sun), ensureWeather(state.rest, mon, sun),
+      reportDays(state.rest.id, addDaysIso(mon, -7), addDaysIso(mon, -1)), reportDays(state.rest.id, lyMon, addDaysIso(lyMon, 6)),
+    ]);
+    if (wk !== mon) return; // moved on
+    drawWeek({ mon, n, rows, weather, prevRows, lyRows });
+  } catch (e) { toastError(e); $('#body').innerHTML = ''; }
+}
+
+// Week KPIs: no stock count per week, so cost of goods = purchases
+const weekKpis = (rows) => { const s = sumDays(rows); return { s, k: rows.length ? monthKpis(s, {}) : null }; };
+
+function drawWeek({ mon, n, rows, weather, prevRows, lyRows }) {
+  const meta = state.meta;
+  const season = monthSeason(Number(mon.slice(0, 4)), Number(mon.slice(5, 7)));
+  const tg = (m) => targetFor(meta, m, season);
+  const { s, k } = weekKpis(rows);
+  if (!k) {
+    $('#body').innerHTML = `<div class="card empty-state"><div class="pane"></div><h2>${t('week_empty_title', { n })}</h2><p>${t('month_empty_text')}</p>
+      <a class="btn btn-primary" href="#/today">${t('open_today')}</a></div>`;
+    return;
+  }
+  const prev = weekKpis(prevRows).k; const ly = weekKpis(lyRows).k;
+  const pctRow = (label, val, target, cls = '') => { const tl = traffic(val, target);
+    return `<tr class="${cls}"><td>${tl ? `<span class="tl ${tl}"></span>` : ''}${label}${target != null ? ` <span class="small muted">(${t('target')} ${fmt.pct(target, 0)})</span>` : ''}</td><td class="${tl ? 'txt-' + tl : ''}">${fmt.pct(val)}</td></tr>`; };
+  const money = (label, val, cls = '') => `<tr class="${cls}"><td>${label}</td><td>${fmt.money2(val)}</td></tr>`;
+  const ob = ` <span class="small muted">(${t('purchases_based')})</span>`;
+  const show = (v, f) => (v == null ? '–' : f === 'money' ? fmt.money(v) : f === 'money2' ? fmt.money2(v) : f === 'pct' ? fmt.pct(v) : fmt.num(v));
+  const delta = (a, b, f, upGood) => {
+    if (a == null || b == null) return '';
+    if (f === 'pct') { const d = (a - b) * 100; if (Math.abs(d) < 0.05) return ''; const good = upGood ? d > 0 : d < 0; return `<span class="small ${good ? 'txt-green' : 'txt-red'}">${d > 0 ? '+' : ''}${fmt.num(d, 1)} pt</span>`; }
+    if (!b) return ''; const d = (a - b) / Math.abs(b); if (Math.abs(d) < 0.005) return ''; const good = upGood ? d > 0 : d < 0;
+    return `<span class="small ${good ? 'txt-green' : 'txt-red'}">${d > 0 ? '+' : ''}${fmt.num(d * 100, 0)}%</span>`;
+  };
+  const rowsDef = [['revenue_total', 'revenue', 'money', true], ['step_covers', 'covers', 'num', true], ['avg_spend', 'avgSpend', 'money2', true],
+    ['food_cost_pct', 'foodCostPct', 'pct', false], ['labor_pct', 'laborPct', 'pct', false], ['prime_pct', 'primePct', 'pct', false]];
+  const wBy = Object.fromEntries(weather.map((w) => [w.day, w]));
+  $('#body').innerHTML = `
+    <div class="grid grid-2">
+      <div class="card"><h2>${t('week_summary')}</h2>
+        <table class="kv">
+          <tr><td>${t('step_covers')}</td><td>${fmt.num(k.covers)}</td></tr>
+          ${money(t('revenue_total'), k.revenue, 'strong')}
+          ${money(t('rev_food'), k.foodRevenue, 'sub')}${money(t('rev_bev'), k.bevRevenue, 'sub')}${s.rev_other ? money(t('rev_other'), s.rev_other, 'sub') : ''}
+          ${pctRow(t('food_cost_pct') + ob, k.foodCostPct, tg('food_cost'))}
+          ${pctRow(t('bev_cost_pct') + ob, k.bevCostPct, tg('beverage_cost'))}
+          ${money(t('labor_total'), k.laborAll)}
+          ${pctRow(t('labor_pct'), k.laborPct, tg('labor'))}
+          ${pctRow(t('prime_pct') + ob, k.primePct, tg('prime_cost'), 'strong')}
+          <tr><td>${t('avg_spend')}</td><td>${fmt.money2(k.avgSpend)}</td></tr>
+          <tr><td>${t('hours')}</td><td>${fmt.num(k.hoursStaff + k.hoursPartner, 1)}</td></tr>
+        </table>
+        <div class="note">${t('week_cost_note')}</div></div>
+      <div class="card"><h2>${t('compare_week_title')}</h2><div class="table-wrap"><table class="num-table">
+        <thead><tr><th>${t('metric')}</th><th>${esc(t('week_n', { n }))}</th><th>${t('prev_week')}</th><th>${t('same_week_ly')}</th></tr></thead><tbody>
+        ${rowsDef.map(([label, key, f, upGood]) => `<tr><td>${t(label)}</td><td><strong>${show(k[key], f)}</strong></td>
+          <td>${show(prev && prev[key], f)} ${delta(k[key], prev && prev[key], f, upGood)}</td><td>${show(ly && ly[key], f)} ${delta(k[key], ly && ly[key], f, upGood)}</td></tr>`).join('')}
+        </tbody></table></div>
+        <a class="small" href="#/month/${mon.slice(0, 7)}" style="display:inline-block;margin-top:10px">${t('open_month')}</a></div>
+    </div>
+    <div class="card" style="margin-top:16px" id="week-days"><h2>${t('per_day')}</h2><div class="table-wrap"><table class="num-table">
+      <thead><tr><th>${t('date')}</th><th></th><th>${t('step_covers')}</th><th>${t('revenue_excl')}</th><th>${t('purchases_excl')}</th><th>${t('hours')}</th><th>${t('labor_total')}</th></tr></thead><tbody>
+      ${rows.map((r) => { const w = wBy[r.day]; const rev = Number(r.rev_food) + Number(r.rev_beverage) + Number(r.rev_other);
+        const pur = Number(r.pur_food) + Number(r.pur_beverage) + Number(r.pur_non_food) + Number(r.pur_cleaning) + Number(r.pur_small_inventory);
+        return `<tr><td><a href="#/today/${r.day}">${esc(fmt.dayShort(r.day))}</a> ${r.status === 'complete' ? '<span class="txt-green">&#10003;</span>' : `<span class="badge warn">${t('st_draft')}</span>`}</td>
+          <td>${w ? `${weatherIcon(w.weather_code)} ${fmt.num(Number(w.tmax), 0)}&deg;` : ''}</td>
+          <td>${r.covers ?? '–'}</td><td>${fmt.money2(rev)}</td><td>${fmt.money2(pur)}</td><td>${fmt.num(Number(r.hours_staff) + Number(r.hours_partner), 2)}</td>
+          <td>${fmt.money2(Number(r.labor_staff) + Number(r.labor_partner))}</td></tr>`; }).join('')}
+        <tr class="total"><td>${t('total')}</td><td></td><td>${fmt.num(k.covers)}</td><td>${fmt.money2(k.revenue)}</td><td>${fmt.money2(s.purchases)}</td><td>${fmt.num(k.hoursStaff + k.hoursPartner, 2)}</td><td>${fmt.money2(k.laborAll)}</td></tr>
+      </tbody></table></div></div>`;
 }

@@ -602,3 +602,7 @@ tr.sc-current td { background: var(--primary-soft); }
 .date-chips { display: flex !important; flex-wrap: nowrap !important; gap: 6px !important; }
 .date-chips .chip { flex: 1 1 auto; min-width: 0; min-height: 40px; padding: 7px 10px; font-size: .92rem; justify-content: center; text-align: center; white-space: nowrap; display: inline-flex; align-items: center; gap: 6px; }
 .date-chips .chip span { overflow: hidden; text-overflow: ellipsis; }
+/* Month or week */
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); }
+.seg a { padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: .9rem; color: var(--ink-2); text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
+.seg a.on { background: var(--primary); color: #fff; }

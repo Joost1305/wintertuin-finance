@@ -153,6 +153,16 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.waitForSelector('#compare table');
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx');
       await q.screenshot({ path: `${OUT}/08-month.png`, fullPage: true }); });
+    await step('week view: switch from month, summary, comparison and days; back to month', async () => {
+      await q.goto(BASE + '#/month'); await q.waitForSelector('.seg');
+      await q.click('.seg a >> text=Week'); await q.waitForSelector('.seg a.on >> text=Week');
+      await q.waitForFunction(() => document.querySelector('#body .card h2, #body .empty-state h2'));
+      if (await q.$('.empty-state')) { await q.click('#prev'); await q.waitForTimeout(800); }
+      await q.waitForSelector('#body .num-table tr.total');
+      const txt = await q.textContent('#body'); if (!/Week summary/.test(txt) || !/Previous week/.test(txt) || !/on purchases/.test(txt)) throw new Error(txt.slice(0, 300));
+      const days = await q.$$eval('#week-days tbody tr:not(.total)', (r) => r.length); if (days < 1 || days > 7) throw new Error('days ' + days);
+      await q.screenshot({ path: `${OUT}/08w-week.png`, fullPage: true });
+      await q.click('.seg a >> text=Month'); await q.waitForSelector('#inv-form'); });
     await step('calendar: events from the team app link to their BEO, the automatic note is replaced', async () => {
       await q.goto(BASE + '#/calendar'); await q.waitForSelector('.cal-grid');
       const href = await q.getAttribute('.cal-ev.ev-confirmed', 'href'); if (!/wintertuin-staff-app\/#\/events\/ev1$/.test(href)) throw new Error('link ' + href);
