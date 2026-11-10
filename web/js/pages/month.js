@@ -1,4 +1,5 @@
 // Month report: the Excel month tab. Totals, inventory counts, COGS and all cost percentages.
+import { landlordCard } from '../landlord.js';
 import { state, perm, app, esc, fmt, toast, toastError, todayIso, addDaysIso, $, nameOf, parseAmount, printHeader, printPage } from '../core.js';
 import { t } from '../i18n.js';
 import { sb, check, reportDays, ensureWeather } from '../data.js';
@@ -57,6 +58,7 @@ async function load() {
       reportDays(state.rest.id, first, last), loadInventory(cur.y, cur.m), ensureWeather(state.rest, first, last),
     ]);
     draw(rows, inv, weather);
+    const ll = await landlordCard(first, last); if (ll && $('#body')) $('#body').insertAdjacentHTML('beforeend', ll);
   } catch (e) { toastError(e); $('#body').innerHTML = ''; }
 }
 

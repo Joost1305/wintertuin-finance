@@ -137,6 +137,9 @@
         const all = [{ id: 'ev1', title: 'Wedding Jansen', event_date: today, start_time: '17:00:00', status: 'confirmed', guests: 72, expected_revenue: role === 'staff' ? null : 6120, prices_incl_vat: true, deposit: null, deposit_due: null, deposit_paid: null },
                      { id: 'ev2', title: 'Company dinner', event_date: later, start_time: '19:00:00', status: 'option', guests: 30, expected_revenue: 1950, prices_incl_vat: false, deposit: 500, deposit_due: today, deposit_paid: false }];
         return { data: all.filter((e) => e.event_date >= args.p_from && e.event_date <= args.p_to && (role !== 'staff' || e.status !== 'option')), error: null }; }
+      if (name === 'fin_event_money') { const d = (args.p_from || '').slice(0, 8) + '14';
+        return { data: [{ id: 'ev9', title: 'Bruiloft Pieters', event_date: d, status: 'confirmed', guests: 80, price_lines: [{ label: 'Zaalhuur De kas', per: 'fixed', qty: 1, price: 350, vat: 0.21, room_id: 'kas', owner: 'landlord' }, { label: 'Diner p.p.', per: 'pp', price: 60, vat: 0.09 }] },
+          { id: 'ev8', title: 'Lezing', event_date: d, status: 'option', guests: 30, price_lines: [{ label: 'Zaalhuur Serre', per: 'fixed', qty: 1, price: 175, vat: 0.21, room_id: 'serre', owner: 'landlord', billed_by_landlord: true }] }], error: null }; }
       if (name === 'fin_open_deposits') return { data: [{ id: 'ev2', title: 'Company dinner', event_date: new Date(Date.now() + 9 * 864e5).toLocaleDateString('sv-SE'), deposit: 500, deposit_due: new Date(Date.now() - 864e5).toLocaleDateString('sv-SE') }], error: null };
       if (name === 'fin_set_day_open') { const ex = db.fin_closures.find((c) => c.day === args.p_day);
         if (ex) Object.assign(ex, { is_open: args.p_open, note: args.p_note }); else db.fin_closures.push({ id: uid(), organization_id: ORG, restaurant_id: REST, day: args.p_day, is_open: args.p_open, note: args.p_note });

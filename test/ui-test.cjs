@@ -153,6 +153,10 @@ const step = async (name, fn) => { process.stdout.write(`- ${name} ... `); await
       await q.waitForSelector('#compare table');
       const [dl] = await Promise.all([q.waitForEvent('download'), q.click('#xlsx')]); if (!dl.suggestedFilename().endsWith('.xlsx')) throw new Error('no xlsx');
       await q.screenshot({ path: `${OUT}/08-month.png`, fullPage: true }); });
+    await step('month: room hire for the landlord, split into via us and invoiced by her', async () => {
+      await q.goto(BASE + '#/month'); await q.waitForSelector('#landlord-card', { timeout: 20000 });
+      const txt = await q.textContent('#landlord-card');
+      if (!/Bruiloft Pieters/.test(txt) || !/350/.test(txt) || !/Lezing/.test(txt) || !/herself|zelf/.test(txt)) throw new Error(txt.slice(0, 300)); });
     await step('week view: switch from month, summary, comparison and days; back to month', async () => {
       await q.goto(BASE + '#/month'); await q.waitForSelector('.seg');
       await q.click('.seg a >> text=Week'); await q.waitForSelector('.seg a.on >> text=Week');
