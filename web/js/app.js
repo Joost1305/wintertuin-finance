@@ -1,3 +1,4 @@
+import { TEAM_URL } from './team.js';
 // App shell and router (hash based, no build step). Same structure as WASTE log.
 import { state, perm, $, esc, app, toastError, renderLangToggle, savedRestId, saveRestId, refreshMeta, closeModal , employeeView, renderEmployeeBanner } from './core.js';
 import { t, setLang, lang } from './i18n.js';
@@ -164,6 +165,9 @@ async function route() {
     location.hash = '#/login'; return;
   }
   const [path, ...rest] = location.hash.replace(/^#\//, '').split('/');
+  // the ? icon opens the handbook (in the Team app) at the chapter of this page
+  { const hb = document.getElementById('help-btn'); const ch = { today: 'fin-today', calendar: 'fin-calendar', month: 'fin-month', dashboard: 'fin-dashboard', vat: 'fin-dashboard', settings: 'fin-settings' }[path || 'today'] || 'fin-today';
+    if (hb) hb.href = `${TEAM_URL}#/help/${ch}`; }
   if (path === 'logout') {
     employeeView.set(false);
     await signOut().catch(() => {});

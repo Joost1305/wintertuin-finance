@@ -606,3 +606,6 @@ tr.sc-current td { background: var(--primary-soft); }
 .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 999px; padding: 3px; background: var(--surface); }
 .seg a { padding: 6px 14px; border-radius: 999px; font-weight: 600; font-size: .9rem; color: var(--ink-2); text-decoration: none; min-height: 32px; display: inline-flex; align-items: center; }
 .seg a.on { background: var(--primary); color: #fff; }
+/* Help icon in the top bar (opens the handbook in the Team app) */
+.help-btn { width: 30px; height: 30px; border-radius: 50%; display: inline-grid; place-items: center; border: 1px solid var(--line); color: var(--ink-2); font-weight: 700; font-size: .95rem; text-decoration: none; background: var(--surface); flex: none; }
+.help-btn:hover { color: var(--primary); border-color: var(--primary); }
